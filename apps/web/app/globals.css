@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fffdfa;
+  --foreground: #282624;
+  --card: #fffdfa;
+  --card-foreground: #282624;
+  --popover: #ffffff;
+  --popover-foreground: #282624;
+  --primary: #3b6ff0;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f3ef;
+  --secondary-foreground: #282624;
+  --muted: #f6f3ef;
+  --muted-foreground: #67625d;
+  --accent: #f6f3ef;
+  --accent-foreground: #282624;
+  --destructive: #e40014;
+  --border: #e6e0da;
+  --input: #e6e0da;
+  --ring: #3b6ff0;
+  --live: #009f31;
+  --radius: 0.875rem;
+}
+
+.dark {
+  --background: #1a1512;
+  --foreground: #f7f5f1;
+  --card: #231e1b;
+  --card-foreground: #f7f5f1;
+  --popover: #231e1b;
+  --popover-foreground: #f7f5f1;
+  --primary: #3b6ff0;
+  --primary-foreground: #ffffff;
+  --secondary: #2d2824;
+  --secondary-foreground: #f7f5f1;
+  --muted: #2d2824;
+  --muted-foreground: #aba39b;
+  --accent: #2d2824;
+  --accent-foreground: #f7f5f1;
+  --destructive: #ff6568;
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #3b6ff0;
+  --live: #50c05f;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-live: var(--live);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-xl: var(--radius);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

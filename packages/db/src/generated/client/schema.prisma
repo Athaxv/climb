@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SocialLinkType {
+  LINKEDIN
+  GITHUB
+  TWITTER
+  WEBSITE
+  PORTFOLIO
+  OTHER
+}
+
+enum BidStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  MOCK
+  DODO
+}
+
+enum ActivityType {
+  JOINED
+  RAISED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  person   Person?
+  bids     Bid[]
+  payments Payment[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  people Person[]
+}
+
+model Person {
+  id           String   @id @default(cuid())
+  userId       String?  @unique
+  username     String   @unique
+  fullName     String
+  headline     String
+  bio          String?
+  imageUrl     String?
+  profileUrl   String?
+  categoryId   String
+  location     String?
+  country      String?
+  currentBid   Int      @default(0)
+  currentBidAt DateTime @default(now())
+  totalViews   Int      @default(0)
+  verified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  category    Category       @relation(fields: [categoryId], references: [id])
+  socialLinks SocialLink[]
+  bids        Bid[]
+  views       ProfileView[]
+  snapshots   RankSnapshot[]
+  payments    Payment[]
+  linkClicks  LinkClick[]
+  activities  Activity[]
+
+  @@index([username])
+  @@index([categoryId, currentBid(sort: Desc), currentBidAt(sort: Asc)])
+  @@index([currentBid(sort: Desc), currentBidAt(sort: Asc), id(sort: Asc)])
+  @@index([createdAt])
+}
+
+model SocialLink {
+  id        String         @id @default(cuid())
+  personId  String
+  type      SocialLinkType
+  url       String
+  createdAt DateTime       @default(now())
+
+  person     Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  linkClicks LinkClick[]
+
+  @@unique([personId, type])
+  @@unique([type, url])
+  @@index([personId])
+}
+
+model Bid {
+  id                 String    @id @default(cuid())
+  personId           String
+  userId             String?
+  targetBidCents     Int
+  chargeAmountCents  Int
+  status             BidStatus @default(PENDING)
+  providerCheckoutId String?   @unique
+  identityInput      String?
+  createdAt          DateTime  @default(now())
+
+  person  Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payment Payment?
+
+  @@index([personId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Payment {
+  id                 String          @id @default(cuid())
+  userId             String
+  personId           String
+  bidId              String          @unique
+  amount             Int
+  currency           String          @default("usd")
+  provider           PaymentProvider
+  providerPaymentId  String?         @unique
+  providerCheckoutId String?         @unique
+  status             PaymentStatus   @default(PENDING)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  bid    Bid    @relation(fields: [bidId], references: [id], onDelete: Cascade)
+
+  @@index([personId, createdAt])
+}
+
+model ProfileView {
+  id            String   @id @default(cuid())
+  personId      String
+  ipHash        String
+  userAgentHash String
+  createdAt     DateTime @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId, createdAt])
+  @@index([personId, ipHash, createdAt])
+}
+
+model RankSnapshot {
+  id        String   @id @default(cuid())
+  personId  String
+  rank      Int
+  bid       Int
+  createdAt DateTime @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId, createdAt])
+  @@index([createdAt])
+}
+
+model LinkClick {
+  id           String   @id @default(cuid())
+  personId     String
+  socialLinkId String
+  ipHash       String?
+  createdAt    DateTime @default(now())
+
+  person     Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  socialLink SocialLink @relation(fields: [socialLinkId], references: [id], onDelete: Cascade)
+
+  @@index([personId, createdAt])
+  @@index([socialLinkId, createdAt])
+}
+
+model ProviderWebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  personId  String
+  type      ActivityType
+  amount    Int
+  rank      Int
+  createdAt DateTime     @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([personId, createdAt])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  name      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([createdAt])
+}

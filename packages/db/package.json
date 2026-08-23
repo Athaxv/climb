@@ -1,0 +1,31 @@
+{
+  "name": "@climb/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@climb/ranking": "workspace:*",
+    "@prisma/client": "^6.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prisma": "^6.14.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
+  }
+}

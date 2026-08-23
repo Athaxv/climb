@@ -1,0 +1,20 @@
+node_modules
+.turbo
+.next
+dist
+.env
+.env.local
+.env*.local
+*.log
+*.tsbuildinfo
+.DS_Store
+coverage
+.vercel
+prisma/*.db
+prisma/*.db-journal
+packages/db/src/generated/**/*.node
+packages/db/src/generated/**/*.wasm
+
+# Local dumps that must never ship
+/~
+apps/web/scripts

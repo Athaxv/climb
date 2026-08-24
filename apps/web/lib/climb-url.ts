@@ -10,9 +10,17 @@ export function climbPath(input?: { categorySlug?: string | null; q?: string | n
 
 export function parseBoardSearch(searchParams: { q?: string; page?: string }) {
   const q = searchParams.q?.trim() ?? "";
-  const pageRaw = Number.parseInt(searchParams.page ?? "1", 10);
   return {
     q: q.length >= 2 ? q : "",
-    page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
+    page: parsePage(searchParams.page),
   };
+}
+
+export function parsePage(raw?: string) {
+  const pageRaw = Number.parseInt(raw ?? "1", 10);
+  return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+}
+
+export function pageHref(path: string, page: number) {
+  return page > 1 ? `${path}?page=${page}` : path;
 }

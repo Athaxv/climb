@@ -41,7 +41,12 @@ export function LeaderboardList({
         </p>
       ) : null}
       {people.length === 0 ? (
-        <p className="py-16 text-center text-muted-foreground">No one on this page.</p>
+        <p className="py-16 text-center text-muted-foreground">
+          No one on this page.{" "}
+          <a href={hrefForPage(1)} className="font-medium text-primary hover:underline">
+            Back to page 1
+          </a>
+        </p>
       ) : null}
       {top.length > 0 ? (
         <div className="flex flex-col gap-3">

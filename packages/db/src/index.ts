@@ -10,6 +10,7 @@ export {
 export type { ClimbCategory, CategoryGroup } from "./categories";
 export { normalizeSkill, parseSkillList, skillSlug } from "./skills";
 export {
+  getBoardHero,
   getCategories,
   getLatestActivity,
   getLeaderboard,

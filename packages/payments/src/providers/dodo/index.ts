@@ -1,5 +1,5 @@
 import { checkoutIdFromSession, createDodoCheckout } from "./checkout";
-import { createDodoClient, isUsableDodoApiKey, isUsableDodoProductId, resolveDodoEnvironment } from "./client";
+import { createDodoClient, isUsableDodoApiKey, isUsableDodoProductId, isUsableDodoWebhookKey, resolveDodoEnvironment } from "./client";
 import { refundDodoPayment } from "./refunds";
 import type { DodoSdkLike } from "./types";
 import { stringRecord, unwrapDodoWebhook } from "./webhook";
@@ -44,9 +44,10 @@ export function createDodoPaymentProvider(options: DodoPaymentProviderOptions = 
       }
       const session = await client.checkoutSessions.retrieve(checkoutId);
       return {
-        checkoutId: checkoutIdFromSession(session, checkoutId),
+        checkoutId: checkoutIdFromSession(session, checkoutId) || session.id || checkoutId,
         paymentStatus: session.payment_status ?? "unknown",
-        customerEmail: session.customer?.email,
+        paymentId: session.payment_id ?? undefined,
+        customerEmail: session.customer_email ?? session.customer?.email ?? undefined,
         metadata: stringRecord(session.metadata),
       };
     },
@@ -59,4 +60,10 @@ export function createDodoPaymentProvider(options: DodoPaymentProviderOptions = 
   };
 }
 
-export { createDodoClient, isUsableDodoApiKey, isUsableDodoProductId, resolveDodoEnvironment };
+export {
+  createDodoClient,
+  isUsableDodoApiKey,
+  isUsableDodoProductId,
+  isUsableDodoWebhookKey,
+  resolveDodoEnvironment,
+};

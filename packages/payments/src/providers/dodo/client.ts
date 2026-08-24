@@ -18,12 +18,18 @@ export function isUsableDodoProductId(value: string | undefined): boolean {
   return Boolean(value && /^pdt_[A-Za-z0-9]+$/.test(value.trim()) && !value.includes("..."));
 }
 
+export function isUsableDodoWebhookKey(value: string | undefined): boolean {
+  const key = value?.trim() ?? "";
+  if (key.length < 20 || key.includes("...")) return false;
+  return true;
+}
+
 export function createDodoClient(opts?: {
   bearerToken?: string;
   webhookKey?: string;
   environment?: DodoEnvironment;
 }): DodoSdkLike {
-  const bearerToken = opts?.bearerToken ?? process.env.DODO_PAYMENTS_API_KEY;
+  const bearerToken = (opts?.bearerToken ?? process.env.DODO_PAYMENTS_API_KEY)?.trim();
   if (!isUsableDodoApiKey(bearerToken)) {
     throw new PaymentProviderError("DODO_PAYMENTS_API_KEY is not configured", "not_configured");
   }
@@ -31,6 +37,6 @@ export function createDodoClient(opts?: {
   return new DodoPayments({
     bearerToken,
     environment: opts?.environment ?? resolveDodoEnvironment(),
-    webhookKey: opts?.webhookKey ?? process.env.DODO_PAYMENTS_WEBHOOK_KEY,
+    webhookKey: (opts?.webhookKey ?? process.env.DODO_PAYMENTS_WEBHOOK_KEY)?.trim(),
   }) as unknown as DodoSdkLike;
 }

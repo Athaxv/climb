@@ -1,16 +1,16 @@
-import { assignRanks, calculateTrendingScores } from "@climb/ranking";
+import { calculateTrendingScores, LEADERBOARD_PAGE_SIZE } from "@climb/ranking";
 import { prisma } from "./client";
+import { Prisma } from "./generated/client";
 
 const personInclude = {
   category: true,
   socialLinks: true,
+  personSkills: { include: { skill: true } },
   snapshots: {
     orderBy: { createdAt: "desc" as const },
     take: 8,
   },
 } as const;
-
-export type LeaderboardPerson = Awaited<ReturnType<typeof getLeaderboard>>[number];
 
 const liveWhere = { currentBid: { gt: 0 } };
 
@@ -26,9 +26,68 @@ function snapshotBidAt(snapshots: { bid: number; createdAt: Date }[], hoursAgo: 
   return match?.bid ?? null;
 }
 
+function skillNames(person: { personSkills: { skill: { name: string; slug: string } }[] }) {
+  return [...person.personSkills]
+    .sort((a, b) => a.skill.name.localeCompare(b.skill.name))
+    .map((row) => row.skill.name);
+}
+
+function leaderboardWhere(options?: { categorySlug?: string; q?: string }): Prisma.PersonWhereInput {
+  const needle = options?.q?.trim();
+  return {
+    ...liveWhere,
+    ...(options?.categorySlug ? { category: { slug: options.categorySlug } } : {}),
+    ...(needle && needle.length >= 2
+      ? {
+          OR: [
+            { fullName: { contains: needle, mode: "insensitive" } },
+            { username: { contains: needle, mode: "insensitive" } },
+            {
+              personSkills: {
+                some: {
+                  skill: {
+                    OR: [
+                      { name: { contains: needle, mode: "insensitive" } },
+                      { slug: { contains: needle, mode: "insensitive" } },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
+function serializePerson<
+  T extends {
+    currentBid: number;
+    snapshots: { rank: number; bid: number; createdAt: Date }[];
+    personSkills: { skill: { name: string; slug: string } }[];
+  },
+>(person: T, rank: number) {
+  const { snapshots, personSkills: _skills, ...serializable } = person;
+  const rank24h = snapshotRankAt(snapshots, 24);
+  const rank7d = snapshotRankAt(snapshots, 24 * 7);
+  const bid24h = snapshotBidAt(snapshots, 24);
+  const skills = skillNames(person);
+
+  return {
+    ...serializable,
+    skills,
+    rank,
+    rank24h,
+    rank7d,
+    movement24h: rank24h == null ? 0 : rank24h - rank,
+    movement7d: rank7d == null ? 0 : rank7d - rank,
+    bidGrowth24h: bid24h == null ? 0 : person.currentBid - bid24h,
+  };
+}
+
 export async function getCategories() {
   return prisma.category.findMany({
-    orderBy: { name: "asc" },
+    orderBy: { sortOrder: "asc" },
     include: {
       _count: { select: { people: { where: liveWhere } } },
     },
@@ -38,51 +97,36 @@ export async function getCategories() {
 export async function getLeaderboard(options?: {
   categorySlug?: string;
   take?: number;
+  page?: number;
+  pageSize?: number;
   q?: string;
 }) {
-  const needle = options?.q?.trim();
-  const people = await prisma.person.findMany({
-    where: {
-      ...liveWhere,
-      ...(options?.categorySlug ? { category: { slug: options.categorySlug } } : {}),
-      ...(needle && needle.length >= 2
-        ? {
-            OR: [
-              { fullName: { contains: needle, mode: "insensitive" } },
-              { username: { contains: needle, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ currentBid: "desc" }, { currentBidAt: "asc" }, { id: "asc" }],
-    take: options?.take ?? 50,
-    include: personInclude,
-  });
+  const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? options?.take ?? LEADERBOARD_PAGE_SIZE));
+  const page = Math.max(1, options?.page ?? 1);
+  const skip = options?.take && !options?.page ? 0 : (page - 1) * pageSize;
+  const take = options?.take && !options?.page ? options.take : pageSize;
+  const where = leaderboardWhere(options);
 
-  const ranked = assignRanks(
-    people.map((person) => ({
-      ...person,
-      currentBidCents: person.currentBid,
-    })),
-  );
+  const [total, people] = await Promise.all([
+    prisma.person.count({ where }),
+    prisma.person.findMany({
+      where,
+      orderBy: [{ currentBid: "desc" }, { currentBidAt: "asc" }, { id: "asc" }],
+      skip,
+      take,
+      include: personInclude,
+    }),
+  ]);
 
-  return ranked.map((person) => {
-    const { snapshots, currentBidCents: _cents, ...serializable } = person;
-    const rank24h = snapshotRankAt(snapshots, 24);
-    const rank7d = snapshotRankAt(snapshots, 24 * 7);
-    const bid24h = snapshotBidAt(snapshots, 24);
-
-    return {
-      ...serializable,
-      currentBid: person.currentBid,
-      rank24h,
-      rank7d,
-      movement24h: rank24h == null ? 0 : rank24h - person.rank,
-      movement7d: rank7d == null ? 0 : rank7d - person.rank,
-      bidGrowth24h: bid24h == null ? 0 : person.currentBid - bid24h,
-    };
-  });
+  return {
+    people: people.map((person, index) => serializePerson(person, skip + index + 1)),
+    total,
+    page,
+    pageSize: take,
+  };
 }
+
+export type LeaderboardPerson = Awaited<ReturnType<typeof getLeaderboard>>["people"][number];
 
 export async function getPersonByUsername(username: string) {
   const person = await prisma.person.findUnique({
@@ -92,19 +136,9 @@ export async function getPersonByUsername(username: string) {
   if (!person) return null;
 
   const rank = person.currentBid > 0 ? await getProfileRank(person.id) : 0;
-  const { snapshots, ...serializable } = person;
-  const rank24h = snapshotRankAt(snapshots, 24);
-  const rank7d = snapshotRankAt(snapshots, 24 * 7);
-  const bid24h = snapshotBidAt(snapshots, 24);
-
   return {
-    ...serializable,
-    rank,
-    rank24h,
-    rank7d,
-    movement24h: rank24h == null ? 0 : rank24h - rank,
-    movement7d: rank7d == null ? 0 : rank7d - rank,
-    bidGrowth24h: bid24h == null ? 0 : person.currentBid - bid24h,
+    ...serializePerson(person, rank),
+    skills: skillNames(person),
   };
 }
 
@@ -136,7 +170,7 @@ export async function getProfileRank(personId: string) {
 export async function getProfilesAroundRank(personId: string, radius = 2) {
   const person = await prisma.person.findUnique({ where: { id: personId } });
   if (!person || person.currentBid <= 0) {
-    return { rank: 0, people: [] as Awaited<ReturnType<typeof getLeaderboard>> };
+    return { rank: 0, people: [] as LeaderboardPerson[] };
   }
 
   const rank = await getProfileRank(person.id);
@@ -150,19 +184,7 @@ export async function getProfilesAroundRank(personId: string, radius = 2) {
     include: personInclude,
   });
 
-  const people = window.map((row, index) => {
-    const { snapshots: _snapshots, ...serializable } = row;
-    return {
-      ...serializable,
-      rank: skip + index + 1,
-      rank24h: null as number | null,
-      rank7d: null as number | null,
-      movement24h: 0,
-      movement7d: 0,
-      bidGrowth24h: 0,
-    };
-  });
-
+  const people = window.map((row, index) => serializePerson(row, skip + index + 1));
   return { rank, people };
 }
 
@@ -192,7 +214,7 @@ export async function getLatestActivity(take = 6) {
 }
 
 export async function getTrending(take = 5) {
-  const board = await getLeaderboard({ take: 50 });
+  const { people: board } = await getLeaderboard({ take: 50, page: 1, pageSize: 50 });
   const scores = calculateTrendingScores(
     board.map((person) => ({
       recentViews: person.totalViews,
@@ -208,7 +230,7 @@ export async function getTrending(take = 5) {
 }
 
 export async function getRising(take = 5) {
-  const board = await getLeaderboard({ take: 50 });
+  const { people: board } = await getLeaderboard({ take: 50, page: 1, pageSize: 50 });
   return [...board]
     .filter((person) => person.movement7d > 0)
     .sort((a, b) => b.movement7d - a.movement7d)
@@ -216,6 +238,9 @@ export async function getRising(take = 5) {
 }
 
 export async function getSiteStats() {
-  const people = await prisma.person.count({ where: liveWhere });
-  return { people };
+  const [people, views] = await Promise.all([
+    prisma.person.count({ where: liveWhere }),
+    prisma.person.aggregate({ where: liveWhere, _sum: { totalViews: true } }),
+  ]);
+  return { people, visitors: views._sum.totalViews ?? 0 };
 }

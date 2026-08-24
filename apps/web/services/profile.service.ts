@@ -1,16 +1,33 @@
-import { prisma } from "@climb/db";
-import { parseIdentity } from "@climb/ranking";
+import { Prisma, prisma, parseSkillList } from "@climb/db";
+import { parseProfileUrl } from "@climb/ranking";
 import { AppError } from "@/lib/http";
+
+function isUniqueViolation(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+async function allocateUsername(base: string) {
+  const root = base.slice(0, 40);
+  const existing = await prisma.person.findUnique({ where: { username: root } });
+  if (!existing) return root;
+  for (let i = 0; i < 8; i++) {
+    const candidate = `${root.slice(0, 32)}-${Math.random().toString(36).slice(2, 8)}`;
+    const taken = await prisma.person.findUnique({ where: { username: candidate } });
+    if (!taken) return candidate;
+  }
+  return `${root.slice(0, 24)}-${crypto.randomUUID().slice(0, 8)}`;
+}
 
 export async function upsertProfile(input: {
   identity: string;
   category: string;
   name?: string;
   headline?: string;
+  skills?: string;
 }) {
-  const parsed = parseIdentity(input.identity);
+  const parsed = parseProfileUrl(input.identity);
   if (!parsed) {
-    throw new AppError("invalid_identity", "Enter a name, @handle, or URL.");
+    throw new AppError("invalid_identity", "Paste a LinkedIn, GitHub, X, or website URL.");
   }
 
   const category = await prisma.category.findUnique({ where: { slug: input.category } });
@@ -21,34 +38,71 @@ export async function upsertProfile(input: {
   const fullName = input.name?.trim() || parsed.fullName;
   const headline = input.headline?.trim() || `${fullName} on Climb`;
 
-  const existing = await prisma.person.findUnique({
-    where: { username: parsed.username },
-    include: { category: true },
+  const existingLink = await prisma.socialLink.findUnique({
+    where: { type_url: { type: parsed.type, url: parsed.canonicalUrl } },
+    include: { person: { include: { category: true } } },
   });
-  if (existing) {
-    return { person: existing, created: false as const };
+  if (existingLink) {
+    return { person: existingLink.person, created: false as const };
   }
 
+  const username = await allocateUsername(parsed.username);
   try {
     const person = await prisma.person.create({
       data: {
-        username: parsed.username,
+        username,
         fullName,
         headline,
-        profileUrl: parsed.profileUrl,
+        profileUrl: parsed.canonicalUrl,
         categoryId: category.id,
         currentBid: 0,
+        socialLinks: {
+          create: { type: parsed.type, url: parsed.canonicalUrl },
+        },
       },
       include: { category: true },
     });
+    await attachSkills(person.id, input.skills);
     return { person, created: true as const };
   } catch (error) {
-    const existingAfter = await prisma.person.findUnique({
-      where: { username: parsed.username },
+    if (!isUniqueViolation(error)) throw error;
+    const raced = await prisma.socialLink.findUnique({
+      where: { type_url: { type: parsed.type, url: parsed.canonicalUrl } },
+      include: { person: { include: { category: true } } },
+    });
+    if (raced) return { person: raced.person, created: false as const };
+    const retryUsername = await allocateUsername(parsed.username);
+    const person = await prisma.person.create({
+      data: {
+        username: retryUsername,
+        fullName,
+        headline,
+        profileUrl: parsed.canonicalUrl,
+        categoryId: category.id,
+        currentBid: 0,
+        socialLinks: {
+          create: { type: parsed.type, url: parsed.canonicalUrl },
+        },
+      },
       include: { category: true },
     });
-    if (existingAfter) return { person: existingAfter, created: false as const };
-    throw error;
+    await attachSkills(person.id, input.skills);
+    return { person, created: true as const };
+  }
+}
+
+async function attachSkills(personId: string, raw?: string) {
+  for (const skill of parseSkillList(raw)) {
+    const row = await prisma.skill.upsert({
+      where: { slug: skill.slug },
+      create: { name: skill.name, slug: skill.slug },
+      update: { name: skill.name },
+    });
+    await prisma.personSkill.upsert({
+      where: { personId_skillId: { personId, skillId: row.id } },
+      create: { personId, skillId: row.id },
+      update: {},
+    });
   }
 }
 

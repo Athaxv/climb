@@ -1,4 +1,4 @@
-import { InvalidWebhookSignatureError, getPaymentProvider } from "@climb/payments";
+import { InvalidWebhookSignatureError, getPaymentProvider, isUsableDodoWebhookKey } from "@climb/payments";
 import { jsonError } from "@/lib/http";
 import { handlePaymentEvent } from "@/services/payment.service";
 
@@ -6,8 +6,15 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const provider = getPaymentProvider();
-  if (!provider.isConfigured()) {
-    return Response.json({ error: "webhook_not_configured" }, { status: 503 });
+  if (!provider.isConfigured() || !isUsableDodoWebhookKey(process.env.DODO_PAYMENTS_WEBHOOK_KEY)) {
+    return Response.json(
+      {
+        error: "webhook_not_configured",
+        message:
+          "Set DODO_PAYMENTS_WEBHOOK_KEY to the Test Mode signing secret (not whsec_...), restart Next, and run pnpm --filter @climb/web dodo:listen.",
+      },
+      { status: 503 },
+    );
   }
 
   const rawBody = await request.text();

@@ -2,17 +2,16 @@ import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/categories", label: "Categories" },
+  { href: "/climb", label: "Leaderboard" },
   { href: "/about", label: "About" },
   { href: "/rules", label: "Rules" },
 ];
 
 export function SiteHeader() {
   return (
-    <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+    <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
       <Link
-        href="/"
+        href="/climb"
         className="flex items-center gap-2 text-[22px] font-medium tracking-tight text-foreground"
       >
         <span

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./categories": "./src/categories.ts",
+    "./skills": "./src/skills.ts"
   },
   "scripts": {
     "generate": "prisma generate",

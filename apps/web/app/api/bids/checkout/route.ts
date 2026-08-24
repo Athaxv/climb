@@ -1,6 +1,5 @@
 import { trackEvent } from "@/lib/analytics";
-import { readSession, readSessionCookie } from "@/lib/auth/session";
-import { getClientIp, jsonError } from "@/lib/http";
+import { getClientIp, jsonError, originFromRequest } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkoutSchema } from "@/lib/validation/schemas";
 import { createCheckout } from "@/services/bid.service";
@@ -14,9 +13,11 @@ export async function POST(request: Request) {
     }
 
     const body = checkoutSchema.parse(await request.json());
-    const session = await readSession(readSessionCookie(request.headers.get("cookie")));
     await trackEvent("bid_started", { identity: body.identity });
-    const checkout = await createCheckout({ ...body, session });
+    const checkout = await createCheckout({
+      ...body,
+      origin: originFromRequest(request),
+    });
     return Response.json(checkout);
   } catch (error) {
     return jsonError(error);

@@ -1,7 +1,7 @@
 import { PrismaClient } from "./generated/client";
 
-/** Bump when the Prisma schema changes so hot reload does not keep a stale client. */
-const PRISMA_GENERATION = "dodo-payments-1";
+/** Bump when the Prisma schema or client options change so hot reload does not keep a stale client. */
+const PRISMA_GENERATION = "neon-tx-timeout-1";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -11,6 +11,10 @@ const globalForPrisma = globalThis as unknown as {
 function createPrisma() {
   return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    transactionOptions: {
+      maxWait: 10_000,
+      timeout: 20_000,
+    },
   });
 }
 

@@ -14,7 +14,18 @@ export type FulfillmentPlan =
   | { action: "refund"; reason: "amount_mismatch" | "stale" }
   | { action: "apply"; kind: "joined" | "raised"; newBidCents: number };
 
-export function amountsMatch(storedAmountCents: number, paidAmountCents: number | undefined): boolean {
+export function quotedChargeCentsFromMetadata(metadata: Record<string, string> | undefined): number | undefined {
+  const raw = metadata?.chargeAmountCents?.trim();
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
+  return Number.parseInt(raw, 10);
+}
+
+export function amountsMatch(
+  storedAmountCents: number,
+  paidAmountCents: number | undefined,
+  quotedChargeCents?: number,
+): boolean {
+  if (quotedChargeCents === storedAmountCents) return true;
   return paidAmountCents === storedAmountCents;
 }
 
@@ -23,6 +34,7 @@ export function planFulfillment(input: {
   bidStatus: BidLifecycleStatus | null;
   storedAmountCents: number;
   paidAmountCents: number | undefined;
+  quotedChargeCents?: number;
   decision: BidDecision | null;
 }): FulfillmentPlan {
   if (input.eventType === "ignored") return { action: "ignore" };
@@ -31,7 +43,7 @@ export function planFulfillment(input: {
   if (input.eventType === "payment.failed") return { action: "fail" };
   if (input.eventType === "payment.cancelled") return { action: "cancel" };
 
-  if (!amountsMatch(input.storedAmountCents, input.paidAmountCents)) {
+  if (!amountsMatch(input.storedAmountCents, input.paidAmountCents, input.quotedChargeCents)) {
     return { action: "refund", reason: "amount_mismatch" };
   }
   if (!input.decision) return { action: "skip_bid" };

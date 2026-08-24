@@ -1,37 +1,28 @@
-import {
-  getLatestActivity,
-  getLeaderboard,
-  getPersonByUsername,
-  getProfileRank,
-  getProfilesAroundRank,
-} from "@climb/db";
+import { getLeaderboard, getPersonByUsername, getLatestActivity, getProfilesAroundRank } from "@climb/db";
 import { LEADERBOARD_CACHE_TTL_SECONDS, leaderboardCacheKey, profileCacheKey } from "@climb/ranking";
 import { cacheGetJson, cacheSetJson } from "@/lib/redis";
 
-export async function listLeaderboard(options?: { categorySlug?: string; q?: string; take?: number }) {
-  if (options?.q && options.q.trim().length >= 2) {
-    const matches = await getLeaderboard({
-      categorySlug: options.categorySlug,
-      q: options.q,
-      take: options.take ?? 6,
-    });
-    return Promise.all(
-      matches.map(async (person) => ({
-        ...person,
-        rank: await getProfileRank(person.id),
-      })),
-    );
+type Board = Awaited<ReturnType<typeof getLeaderboard>>;
+
+export async function listLeaderboard(options?: {
+  categorySlug?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  take?: number;
+}) {
+  const searching = Boolean(options?.q && options.q.trim().length >= 2);
+  const page = options?.page ?? 1;
+  if (searching || page > 1) {
+    return getLeaderboard(options);
   }
 
   const key = leaderboardCacheKey(options?.categorySlug);
-  const cached = await cacheGetJson<Awaited<ReturnType<typeof getLeaderboard>>>(key);
+  const cached = await cacheGetJson<Board>(key);
   if (cached) return cached;
-  const people = await getLeaderboard({
-    categorySlug: options?.categorySlug,
-    take: options?.take,
-  });
-  await cacheSetJson(key, people, LEADERBOARD_CACHE_TTL_SECONDS);
-  return people;
+  const result = await getLeaderboard(options);
+  await cacheSetJson(key, result, LEADERBOARD_CACHE_TTL_SECONDS);
+  return result;
 }
 
 export async function getCachedProfile(username: string) {

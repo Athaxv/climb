@@ -16,10 +16,12 @@ export default async function RisingPage() {
     <main id="main" className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight">Biggest movers</h1>
       <p className="mt-2 text-muted-foreground">Largest rank climbs over the last 7 days.</p>
-      <div className="mt-8 flex flex-col gap-3">
-        {people.map((person) => (
-          <PersonCard key={person.id} person={person} />
-        ))}
+      <div className="mt-8 flex flex-col gap-4 pt-2">
+        {people.length === 0 ? (
+          <p className="py-16 text-center text-muted-foreground">No one on this board yet. Claim a spot.</p>
+        ) : (
+          people.map((person) => <PersonCard key={person.id} person={person} />)
+        )}
       </div>
     </main>
   );

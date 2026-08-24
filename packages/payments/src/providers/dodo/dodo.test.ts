@@ -49,6 +49,15 @@ describe("DodoPaymentProvider", () => {
       product_cart: [{ product_id: "pdt_bid", quantity: 5 }],
       customer: { email: "maya@example.com", name: "Maya Chen" },
       return_url: "http://localhost:3000/api/checkout/complete?username=maya-chen",
+      billing_currency: "USD",
+      billing_address: {
+        country: "US",
+        city: "San Francisco",
+        state: "CA",
+        street: "123 Market St",
+        zipcode: "94102",
+      },
+      feature_flags: { allow_currency_selection: false, redirect_immediately: true },
       metadata: {
         bidId: "bid_1",
         personId: "p_1",
@@ -56,6 +65,31 @@ describe("DodoPaymentProvider", () => {
         chargeAmountCents: "500",
       },
     });
+  });
+
+  it("omits customer when Climb has no email so Dodo can collect it", async () => {
+    const client = mockClient();
+    client.checkoutSessions.create.mockResolvedValue({
+      session_id: "cks_2",
+      checkout_url: "https://checkout.dodopayments.com/session/cks_2",
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+
+    await provider.createCheckout({
+      amountCents: 500,
+      currency: "usd",
+      customerName: "Empty Board Probe",
+      returnUrl: "http://localhost:3000/api/checkout/complete?username=github-empty-board-probe",
+      metadata: { bidId: "bid_2" },
+    });
+
+    expect(client.checkoutSessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        product_cart: [{ product_id: "pdt_bid", quantity: 5 }],
+        return_url: "http://localhost:3000/api/checkout/complete?username=github-empty-board-probe",
+      }),
+    );
+    expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("customer");
   });
 
   it("wraps Dodo API failures", async () => {
@@ -133,5 +167,23 @@ describe("DodoPaymentProvider", () => {
     const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
     await provider.refund("pay_1");
     expect(client.refunds.create).toHaveBeenCalledWith({ payment_id: "pay_1" });
+  });
+
+  it("maps retrieve payment_status and customer_email from the session status payload", async () => {
+    const client = mockClient();
+    client.checkoutSessions.retrieve.mockResolvedValue({
+      id: "cks_1",
+      payment_status: "succeeded",
+      payment_id: "pay_0Nm6RtD0syTrmvjLRVjcs",
+      customer_email: "payer@example.com",
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+    await expect(provider.getCheckout("cks_1")).resolves.toEqual({
+      checkoutId: "cks_1",
+      paymentStatus: "succeeded",
+      paymentId: "pay_0Nm6RtD0syTrmvjLRVjcs",
+      customerEmail: "payer@example.com",
+      metadata: {},
+    });
   });
 });

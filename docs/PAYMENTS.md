@@ -6,13 +6,13 @@ Climb talks to a provider-neutral `PaymentProvider`. Ranking, Prisma, and `BidSe
 
 - **Ranking** (`@climb/ranking`) only quotes and applies integer cents.
 - **Prisma** (`@climb/db`) stores provider-neutral ids (`providerCheckoutId`, `providerPaymentId`) and `ProviderWebhookEvent`.
-- **Orchestration** (`apps/web/services/payment.service.ts`) creates pending Bid/Payment rows, then calls the provider. Rank moves only after a verified webhook.
+- **Orchestration** (`apps/web/services/payment.service.ts`) creates pending Bid/Payment rows, then calls the provider. Rank moves after a verified webhook, or when the return URL confirms the same Checkout Session with Dodo (`getCheckout`).
 - **Adapter** (`@climb/payments`) is the only package that depends on `dodopayments`.
 
 ## Dodo setup (test mode)
 
 1. Create a Dodo test account and copy `DODO_PAYMENTS_API_KEY` (`dodo_test_...`).
-2. **Developer → Webhooks** → endpoint `https://<host>/api/dodo/webhook` (local: see below). Copy the signing secret into `DODO_PAYMENTS_WEBHOOK_KEY`.
+2. **Developer → Webhooks** — copy the **signing secret** into `DODO_PAYMENTS_WEBHOOK_KEY` (not the `whsec_...` placeholder). The dashboard “Add endpoint” field needs HTTPS; for local rank updates use the CLI listener below instead of pasting `http://localhost`.
 3. Create **one** one-time product priced at **$1.00** (`100` cents) with `tax_category: digital_products`. Put its id in `DODO_BID_PRODUCT_ID` (`pdt_...`).
 4. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode` unless you are going live. The SDK defaults to live; Climb always passes `test_mode` unless this env is exactly `live_mode`.
 
@@ -30,22 +30,19 @@ DODO_PAYMENTS_RETURN_URL=http://localhost:3000/api/checkout/complete?username={u
 DODO_BID_PRODUCT_ID=
 ```
 
-`{username}` is substituted in code. The return URL may show a success banner and set a session cookie. It must **not** apply rank.
+`{username}` is substituted in code. The return URL confirms the Checkout Session with Dodo, applies a still-pending bid if the session is paid, then redirects to `/climb?paid=1`. A bare `?paid=1` query without that confirmation does not move rank.
 
 ## Checkout
 
 ```
 UI  →  POST /api/bids/checkout
-    →  BidService (quote + owner check)
-    →  PaymentService (pending Bid + Payment)
-    →  Dodo checkoutSessions.create
+    →  BidService (quote by pasted URL)
+    →  PaymentService (pending Bid + Payment, no Climb email)
+    →  Dodo checkoutSessions.create (hosted page collects payer email)
     →  redirect session.checkout_url
 ```
 
-Ownership:
-
-- New or unowned listing (`Person.userId` empty): checkout allowed. First `payment.succeeded` sets `Person.userId` from the payer’s email → `User`.
-- Owned listing: `climb_session` `userId` or email must match the owner. Otherwise `403 listing_taken`. Hover “claim this rank” still means bid on **your** row.
+Anyone can pay to join or raise any profile URL. Climb does not collect email and does not check listing ownership. Dodo’s hosted checkout collects the payer email. First `payment.succeeded` may set `Person.userId` from that email for bookkeeping; later raises are still open.
 
 ## Webhook
 
@@ -60,7 +57,8 @@ POST /api/dodo/webhook
 BEGIN
   INSERT ProviderWebhookEvent(eventId = webhook-id)  -- unique; conflict => duplicate
   SELECT Person FOR UPDATE
-  If amount ≠ stored charge, or currentBid >= target:
+  If quoted chargeAmountCents in metadata equals stored Bid.chargeAmountCents, apply even when Dodo total_amount includes tax.
+  Else if total_amount ≠ stored charge, or currentBid >= target:
     mark Bid/Payment REFUNDED
   Else on payment.succeeded:
     currentBid = targetBidCents, currentBidAt = now()
@@ -75,11 +73,32 @@ Duplicate webhook-id → 200 and retry refund if the bid is still REFUNDED.
 
 ## Local test
 
+Checkout return uses the origin of the tab that started Pay. After pay, Dodo redirects immediately (`redirect_immediately`). The return URL applies a pending bid if `getCheckout` shows the session is paid (heals a missed local webhook). Production should still send `payment.succeeded` to `/api/dodo/webhook`. Rank does not move from a bare `?paid=1` query.
+
+1. Paste a real Test Mode webhook signing secret into `apps/web/.env` as `DODO_PAYMENTS_WEBHOOK_KEY`. Restart Next.
+2. In a second terminal, forward events to the port Next actually printed (this repo defaults to 3000):
+
 ```
-dodo wh listen http://localhost:3000/api/dodo/webhook
+pnpm --filter @climb/web dodo:listen
 ```
 
-Test card: `4242 4242 4242 4242`. Rank should move only after the webhook, not when the browser hits the return URL.
+If Next is on another port:
+
+```
+npx dodopayments-cli login <test-api-key> test
+npx dodopayments-cli wh listen http://localhost:<port>/api/dodo/webhook
+```
+
+3. Replay `payment.succeeded` from the Dodo dashboard for an already-paid session, or pay again with listen already running. Opening `/api/checkout/complete?username=...` after a paid session also applies a still-pending bid.
+
+Dodo test cards must match the **billing country** on the hosted form ([testing process](https://docs.dodopayments.com/miscellaneous/testing-process)):
+
+- United States → `4242 4242 4242 4242`, expiry `06/32`, CVV `123`
+- India → `4576 2389 1277 1450`, expiry `06/32`, CVV `123`
+
+A US card on an India-billed checkout (or the reverse) is declined. Climb locks the session to **USD**; do not pay with a real card in test mode.
+
+Rank should move after the webhook, or when the return URL confirms the paid Checkout Session. Keep `dodo:listen` pointed at the same port as Next (`pnpm --filter @climb/web dodo:listen` uses 3000).
 
 ## Go live
 

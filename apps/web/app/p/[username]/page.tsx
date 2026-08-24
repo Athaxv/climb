@@ -4,12 +4,12 @@ import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
 import { PaidRankBanner } from "@/components/people/paid-rank-banner";
 import { PersonAvatar } from "@/components/people/person-card";
 import { ShareRankButton } from "@/components/people/share-rank-button";
+import { ChallengePositionButton } from "@/components/bidding/challenge-position-button";
 import { trackEvent } from "@/lib/analytics";
 import { SESSION_COOKIE, readSession } from "@/lib/auth/session";
 import { recordProfileView } from "@/services/profile.service";
 import { BadgeCheck } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -121,18 +121,16 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         {person.location ? ` · ${person.location}` : ""}
         {person.country ? `, ${person.country}` : ""}
       </p>
+      {person.skills?.length ? (
+        <p className="mt-2 text-sm text-muted-foreground">{person.skills.join(" · ")}</p>
+      ) : null}
       <ShareRankButton username={person.username} rank={person.rank} />
       <div className="mt-8 rounded-[var(--radius)] border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground">Want this spot?</p>
         <p className="mt-1 text-lg font-semibold">
           Claim {person.rank > 0 ? `#${person.rank}` : "this listing"} for {formatUsdFromCents(minToTakeCents)}
         </p>
-        <Link
-          href={`/create?bid=${minToTakeDollars}&category=${person.category.slug}`}
-          className="mt-4 inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
-        >
-          Challenge position
-        </Link>
+        <ChallengePositionButton category={person.category.slug} bid={minToTakeDollars} />
       </div>
     </main>
   );

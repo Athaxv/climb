@@ -1,6 +1,15 @@
 import { quantityFromChargeCents } from "../../fulfillment";
 import { PaymentProviderError, type CheckoutResult, type CreateCheckoutInput } from "../../types";
+import { resolveDodoEnvironment } from "./client";
 import type { DodoSdkLike } from "./types";
+
+const TEST_USD_BILLING = {
+  country: "US",
+  city: "San Francisco",
+  state: "CA",
+  street: "123 Market St",
+  zipcode: "94102",
+} as const;
 
 export async function createDodoCheckout(
   client: DodoSdkLike,
@@ -22,17 +31,27 @@ export async function createDodoCheckout(
   }
 
   try {
+    const email = input.customerEmail?.trim();
     const session = await client.checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity }],
-      customer: {
-        email: input.customerEmail,
-        name: input.customerName,
-      },
+      ...(email
+        ? {
+            customer: {
+              email,
+              name: input.customerName,
+            },
+          }
+        : {}),
       return_url: input.returnUrl,
+      billing_currency: "USD",
+      feature_flags: { allow_currency_selection: false, redirect_immediately: true },
       metadata: {
         ...input.metadata,
         chargeAmountCents: String(input.amountCents),
       },
+      ...(resolveDodoEnvironment() === "test_mode"
+        ? { billing_address: { ...TEST_USD_BILLING } }
+        : {}),
     });
 
     const checkoutId = session.session_id ?? session.id;

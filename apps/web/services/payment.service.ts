@@ -1,9 +1,13 @@
 import { Prisma, prisma } from "@climb/db";
 import { decideSuccessfulBid } from "@climb/ranking";
 import {
+  checkoutLooksFailed,
+  checkoutLooksPaid,
   claimThenFulfill,
   getPaymentProvider,
+  isUsableDodoWebhookKey,
   planFulfillment,
+  quotedChargeCentsFromMetadata,
   type PaymentEvent,
   type PaymentProvider,
 } from "@climb/payments";
@@ -23,17 +27,110 @@ type ApplyResult = {
   bidId?: string;
 };
 
-function isUniqueConflict(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+function isTransientPrismaTx(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Transaction not found|Transaction API error|Unable to start a transaction|P2028|P2024/i.test(message);
 }
 
-export function checkoutReturnUrl(username: string) {
-  const origin = appUrl();
+function isUniqueConflict(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return /Unique constraint failed/i.test(message);
+}
+
+export function checkoutReturnUrl(username: string, origin?: string) {
+  const path = `/api/checkout/complete?username=${encodeURIComponent(username)}`;
+  if (origin) {
+    return `${origin.replace(/\/$/, "")}${path}`;
+  }
   const template = process.env.DODO_PAYMENTS_RETURN_URL;
   if (template) {
     return template.replaceAll("{username}", username);
   }
-  return `${origin}/api/checkout/complete?username=${encodeURIComponent(username)}`;
+  return `${appUrl()}${path}`;
+}
+
+export type CheckoutReturnOutcome = "paid" | "failed" | "open";
+
+export async function applyPaidCheckoutReturn(input: {
+  username?: string | null;
+  sessionId?: string | null;
+}): Promise<{ outcome: CheckoutReturnOutcome; email?: string }> {
+  const provider = getPaymentProvider();
+  if (!provider.isConfigured()) return { outcome: "open" };
+
+  const sessionId = input.sessionId?.trim() || "";
+  const username = input.username?.trim() || "";
+  const bidInclude = { person: true } as const;
+
+  let bid = sessionId
+    ? await prisma.bid.findUnique({
+        where: { providerCheckoutId: sessionId },
+        include: bidInclude,
+      })
+    : null;
+
+  if (!bid && username) {
+    const person = await prisma.person.findUnique({ where: { username } });
+    if (person) {
+      bid = await prisma.bid.findFirst({
+        where: {
+          personId: person.id,
+          status: "PENDING",
+          providerCheckoutId: { not: null },
+        },
+        orderBy: { createdAt: "desc" },
+        include: bidInclude,
+      });
+    }
+  }
+
+  if (!bid?.providerCheckoutId) return { outcome: "open" };
+  if (username && bid.person.username !== username) return { outcome: "failed" };
+
+  let checkout;
+  try {
+    checkout = await provider.getCheckout(sessionId || bid.providerCheckoutId);
+  } catch {
+    return { outcome: "open" };
+  }
+
+  const status = checkout.paymentStatus || "";
+  if (checkoutLooksFailed(status)) {
+    return { outcome: "failed", email: checkout.customerEmail };
+  }
+
+  const metadataUsername = checkout.metadata.username;
+  if (metadataUsername && username && metadataUsername !== username) {
+    return { outcome: "failed", email: checkout.customerEmail };
+  }
+
+  if (!checkoutLooksPaid(status)) {
+    return { outcome: "open", email: checkout.customerEmail };
+  }
+
+  if (bid.status === "COMPLETED") {
+    return { outcome: "paid", email: checkout.customerEmail };
+  }
+  if (bid.status !== "PENDING") {
+    return { outcome: "open", email: checkout.customerEmail };
+  }
+
+  await handlePaymentEvent({
+    type: "payment.succeeded",
+    eventId: `return:${checkout.checkoutId}`,
+    checkoutId: checkout.checkoutId,
+    paymentId: checkout.paymentId,
+    customerEmail: checkout.customerEmail,
+    amountCents: bid.chargeAmountCents,
+    metadata: {
+      bidId: bid.id,
+      chargeAmountCents: String(bid.chargeAmountCents),
+      username: bid.person.username,
+    },
+  });
+
+  return { outcome: "paid", email: checkout.customerEmail };
 }
 
 export async function createProviderCheckout(input: {
@@ -46,8 +143,8 @@ export async function createProviderCheckout(input: {
   targetBidCents: number;
   chargeAmountCents: number;
   identity: string;
-  email: string;
   customerName: string;
+  origin?: string;
 }) {
   const provider = getPaymentProvider();
   if (!provider.isConfigured()) {
@@ -58,17 +155,15 @@ export async function createProviderCheckout(input: {
     );
   }
 
-  const email = input.email.trim().toLowerCase();
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: { name: input.customerName },
-    create: { email, name: input.customerName },
-  });
+  if (!isUsableDodoWebhookKey(process.env.DODO_PAYMENTS_WEBHOOK_KEY)) {
+    console.warn(
+      "DODO_PAYMENTS_WEBHOOK_KEY is still a placeholder. Local webhooks will 503 until you paste the Test Mode signing secret and run `pnpm --filter @climb/web dodo:listen`. The checkout return URL can still apply a paid session.",
+    );
+  }
 
   const bid = await prisma.bid.create({
     data: {
       personId: input.person.id,
-      userId: user.id,
       targetBidCents: input.targetBidCents,
       chargeAmountCents: input.chargeAmountCents,
       status: "PENDING",
@@ -78,7 +173,6 @@ export async function createProviderCheckout(input: {
 
   await prisma.payment.create({
     data: {
-      userId: user.id,
       personId: input.person.id,
       bidId: bid.id,
       amount: input.chargeAmountCents,
@@ -92,9 +186,8 @@ export async function createProviderCheckout(input: {
     const checkout = await provider.createCheckout({
       amountCents: input.chargeAmountCents,
       currency: "usd",
-      customerEmail: email,
       customerName: input.customerName,
-      returnUrl: checkoutReturnUrl(input.person.username),
+      returnUrl: checkoutReturnUrl(input.person.username, input.origin),
       metadata: {
         bidId: bid.id,
         personId: input.person.id,
@@ -193,26 +286,37 @@ async function loadBid(tx: Prisma.TransactionClient, event: PaymentEvent) {
 
 export async function handlePaymentEvent(event: PaymentEvent): Promise<ApplyResult> {
   let result: ApplyResult = {};
+  const run = () =>
+    prisma.$transaction(
+      async (tx) => {
+        const claimed = await claimThenFulfill({
+          insertClaim: async () => {
+            await tx.providerWebhookEvent.create({
+              data: {
+                provider: "dodo",
+                eventId: event.eventId,
+                eventType: event.type,
+              },
+            });
+          },
+          isDuplicate: isUniqueConflict,
+          fulfill: async () => fulfillClaimedEvent(tx, event),
+        });
+        if (claimed.duplicate) {
+          return { duplicate: true, bidId: event.metadata.bidId };
+        }
+        return claimed.result;
+      },
+      { maxWait: 10_000, timeout: 20_000 },
+    );
+
   try {
-    result = await prisma.$transaction(async (tx) => {
-      const claimed = await claimThenFulfill({
-        insertClaim: async () => {
-          await tx.providerWebhookEvent.create({
-            data: {
-              provider: "dodo",
-              eventId: event.eventId,
-              eventType: event.type,
-            },
-          });
-        },
-        isDuplicate: isUniqueConflict,
-        fulfill: async () => fulfillClaimedEvent(tx, event),
-      });
-      if (claimed.duplicate) {
-        return { duplicate: true, bidId: event.metadata.bidId };
-      }
-      return claimed.result;
-    });
+    try {
+      result = await run();
+    } catch (error) {
+      if (!isTransientPrismaTx(error)) throw error;
+      result = await run();
+    }
   } catch (error) {
     if (isUniqueConflict(error)) {
       return { duplicate: true, bidId: event.metadata.bidId };
@@ -265,6 +369,7 @@ async function fulfillClaimedEvent(
     bidStatus: bid.status,
     storedAmountCents: bid.chargeAmountCents,
     paidAmountCents: event.amountCents,
+    quotedChargeCents: quotedChargeCentsFromMetadata(event.metadata),
     decision,
   });
 
@@ -286,6 +391,7 @@ async function fulfillClaimedEvent(
   const paymentId = event.paymentId ?? bid.payment?.providerPaymentId ?? undefined;
 
   const checkoutPatch = event.checkoutId ? { providerCheckoutId: event.checkoutId } : {};
+  const payerPatch = user?.id ? { userId: user.id } : {};
 
   if (plan.action === "fail" || plan.action === "cancel") {
     await tx.bid.update({
@@ -298,6 +404,7 @@ async function fulfillClaimedEvent(
         status: "FAILED",
         providerPaymentId: paymentId,
         ...checkoutPatch,
+        ...payerPatch,
       },
     });
     return { bidId: bid.id };
@@ -318,6 +425,7 @@ async function fulfillClaimedEvent(
         status: "REFUNDED",
         providerPaymentId: paymentId,
         ...checkoutPatch,
+        ...payerPatch,
       },
     });
     return { refund: true, username: person.username, bidId: bid.id };
@@ -346,6 +454,7 @@ async function fulfillClaimedEvent(
       status: "SUCCEEDED",
       providerPaymentId: paymentId,
       ...checkoutPatch,
+      ...payerPatch,
     },
   });
 

@@ -2,9 +2,17 @@ import { createDodoPaymentProvider } from "./providers/dodo";
 import type { PaymentProvider } from "./types";
 
 export type { BidDecision, BidLifecycleStatus, FulfillmentPlan } from "./fulfillment";
-export { amountsMatch, planFulfillment, quantityFromChargeCents } from "./fulfillment";
+export { amountsMatch, planFulfillment, quantityFromChargeCents, quotedChargeCentsFromMetadata } from "./fulfillment";
+export { checkoutLooksFailed, checkoutLooksPaid } from "./checkout-status";
 export { claimThenFulfill, runInMemoryTransaction } from "./idempotency";
-export { createDodoClient, createDodoPaymentProvider, resolveDodoEnvironment } from "./providers/dodo";
+export {
+  createDodoClient,
+  createDodoPaymentProvider,
+  isUsableDodoApiKey,
+  isUsableDodoProductId,
+  isUsableDodoWebhookKey,
+  resolveDodoEnvironment,
+} from "./providers/dodo";
 export { mapDodoWebhookEvent, unwrapDodoWebhook } from "./providers/dodo/webhook";
 export type { DodoSdkLike } from "./providers/dodo/types";
 export type {

@@ -36,18 +36,25 @@ Taking any seat, including #1, is `$1` over the occupant. Climb does not add Out
 
 ## Listing identity
 
-Public browsing is unauthenticated. Checkout needs an email (form field, or the post-pay `climb_session` cookie).
+Public browsing and checkout are unauthenticated. Climb does not collect email; Dodo’s hosted checkout does.
 
-- The listing key is `username` (from a name, `@handle`, or URL).
-- A **new** handle creates a `Person` (draft at `currentBid = 0` until paid).
-- The **owner** of a listing (`Person.userId`) is the only person who may raise that row. Anyone else gets `403 listing_taken` and should bid on **their** handle.
-- The first successful payment sets `Person.userId` from the payer email → `User`.
+Same person on the board means the same **canonical profile URL** on `SocialLink` (`@@unique([type, url])`). Supported inputs are LinkedIn `/in/…`, GitHub, X/Twitter, and a personal website.
+
+- Paste a profile URL. `parseProfileUrl` yields platform + canonical URL (www, query, hash, and trailing slash stripped).
+- If that `SocialLink` exists, checkout uses that `Person` — anyone may pay to join or raise it.
+- Otherwise a `Person` is created (draft at `currentBid = 0` until paid) with public slug `Person.username` = `{platform}-{handle}` from the **first** URL (`github-octocat`, `linkedin-maya-chen`, `x-maya`) plus that `SocialLink`. `Bid.identityInput` stores the raw URL.
+- The first successful payment may set `Person.userId` from the Dodo payer email → `User`. That is bookkeeping, not a raise gate.
 - Public leaderboards hide `currentBid = 0`.
+- Public profile paths stay `/p/[username]`. Seed rows may keep older usernames; new checkouts require a profile URL.
+
+## Discovery
+
+The public board lives at `/climb`. Category boards are `/climb/{slug}` (Engineering, AI & Data, DevOps & Cloud, …). Search is `?q=` and matches name, username, or skills in Postgres. Category is a required checkout field and the only board filter. Skills are metadata, not a filter. Platform (LinkedIn / GitHub / X / website) is display-only.
 
 ## Checkout and webhook
 
-1. `POST /api/bids/checkout` checks ownership, quotes cents, inserts pending `Bid` + `Payment`, then creates a Dodo Checkout Session. The board does not move.
-2. Dodo sends `payment.succeeded` (or failed/cancelled).
+1. `POST /api/bids/checkout` quotes cents for the pasted URL, inserts pending `Bid` + `Payment`, then creates a Dodo Checkout Session. The board does not move.
+2. Dodo sends `payment.succeeded` (or failed/cancelled), or the payer hits `/api/checkout/complete`, which confirms the session with Dodo and applies the same path if it is paid.
 3. `/api/dodo/webhook` verifies the signature on the **raw** body, then:
 
 ```
@@ -65,9 +72,9 @@ If the bid was marked REFUNDED, create a Dodo refund after commit.
 On a duplicate event, return 200 and retry the refund if it never landed.
 ```
 
-Two checkouts for the **same** handle to the **same** target: the first `FOR UPDATE` wins; the second is stale and refunded. Two **different** handles both paying `$221` both succeed; earlier `currentBidAt` ranks higher.
+Two checkouts for the **same** listing to the **same** target: the first `FOR UPDATE` wins; the second is stale and refunded. Two **different** listings both paying `$221` both succeed; earlier `currentBidAt` ranks higher.
 
-Frontend `?paid=1` only shows a banner (and may set a session cookie). It does not write rank.
+Frontend `?paid=1` only shows a banner (and may set a session cookie). Rank is written in `handlePaymentEvent` after a verified webhook, or when `/api/checkout/complete` confirms the Checkout Session with Dodo.
 
 ## Redis
 
@@ -88,7 +95,7 @@ Rate limits (per IP, fail open):
 
 ## Sessions
 
-`AUTH_SECRET` signs an httpOnly JWT after a verified paid Checkout Session. Used for the success banner, owner raises, and future owner edits. Browsing does not require it.
+`AUTH_SECRET` signs an httpOnly JWT after a verified paid Checkout Session. Used for the success banner. Browsing and bidding do not require it.
 
 ## Analytics
 

@@ -8,6 +8,7 @@ import {
   isValidBid,
   moneyToCents,
   parseIdentity,
+  parseProfileUrl,
   quoteCheckout,
 } from "./index";
 
@@ -150,9 +151,9 @@ describe("successful bid application", () => {
 
 describe("cache keys", () => {
   it("invalidates global, category, and profile keys", () => {
-    expect(cacheKeysForBid("maya-chen", "ai-ml")).toEqual([
+    expect(cacheKeysForBid("maya-chen", "ai-data")).toEqual([
       "leaderboard:global",
-      "leaderboard:category:ai-ml",
+      "leaderboard:category:ai-data",
       "profile:maya-chen",
     ]);
   });
@@ -171,21 +172,51 @@ describe("trending", () => {
 });
 
 describe("identity", () => {
-  it("parses a display name into a unique handle", () => {
-    expect(parseIdentity("Maya Chen")).toMatchObject({
-      username: "maya-chen",
+  it("parses GitHub, LinkedIn /in/, and X profile URLs", () => {
+    expect(parseProfileUrl("https://github.com/octocat")).toMatchObject({
+      type: "GITHUB",
+      handle: "octocat",
+      canonicalUrl: "https://github.com/octocat",
+      username: "github-octocat",
+      fullName: "Octocat",
+    });
+    expect(parseProfileUrl("https://linkedin.com/in/maya-chen")).toMatchObject({
+      type: "LINKEDIN",
+      handle: "maya-chen",
+      canonicalUrl: "https://www.linkedin.com/in/maya-chen",
+      username: "linkedin-maya-chen",
       fullName: "Maya Chen",
-      profileUrl: null,
+    });
+    expect(parseProfileUrl("https://x.com/maya")).toMatchObject({
+      type: "TWITTER",
+      handle: "maya",
+      canonicalUrl: "https://x.com/maya",
+      username: "x-maya",
+    });
+    expect(parseProfileUrl("https://twitter.com/maya")?.canonicalUrl).toBe("https://x.com/maya");
+    expect(parseProfileUrl("https://mayachen.dev")).toMatchObject({
+      type: "WEBSITE",
+      canonicalUrl: "https://mayachen.dev",
+      username: "web-mayachen-dev",
     });
   });
 
-  it("parses @handles and profile URLs", () => {
-    expect(parseIdentity("@arjun-mehta")?.username).toBe("arjun-mehta");
-    expect(parseIdentity("https://x.com/mayachen")?.username).toBe("mayachen");
-    expect(parseIdentity("https://mayachen.dev")?.profileUrl).toBe("https://mayachen.dev");
+  it("strips www, query, hash, and trailing slash", () => {
+    expect(parseProfileUrl("https://www.github.com/octocat/?tab=repositories#top")).toMatchObject({
+      canonicalUrl: "https://github.com/octocat",
+      username: "github-octocat",
+    });
   });
 
-  it("rejects short or empty identity", () => {
+  it("does not slug LinkedIn to the hostname", () => {
+    expect(parseProfileUrl("https://linkedin.com/in/maya-chen")?.username).toBe("linkedin-maya-chen");
+    expect(parseProfileUrl("https://linkedin.com/in/maya-chen")?.username).not.toBe("linkedin-com");
+    expect(parseProfileUrl("https://www.linkedin.com/company/foo")).toBeNull();
+  });
+
+  it("rejects names and @handles", () => {
+    expect(parseProfileUrl("Maya Chen")).toBeNull();
+    expect(parseProfileUrl("@arjun-mehta")).toBeNull();
     expect(parseIdentity("ab")).toBeNull();
     expect(parseIdentity("")).toBeNull();
   });

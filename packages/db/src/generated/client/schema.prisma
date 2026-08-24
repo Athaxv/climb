@@ -60,9 +60,12 @@ model Category {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   people Person[]
+
+  @@index([sortOrder])
 }
 
 model Person {
@@ -84,15 +87,16 @@ model Person {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  category    Category       @relation(fields: [categoryId], references: [id])
-  socialLinks SocialLink[]
-  bids        Bid[]
-  views       ProfileView[]
-  snapshots   RankSnapshot[]
-  payments    Payment[]
-  linkClicks  LinkClick[]
-  activities  Activity[]
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  category     Category       @relation(fields: [categoryId], references: [id])
+  socialLinks  SocialLink[]
+  personSkills PersonSkill[]
+  bids         Bid[]
+  views        ProfileView[]
+  snapshots    RankSnapshot[]
+  payments     Payment[]
+  linkClicks   LinkClick[]
+  activities   Activity[]
 
   @@index([username])
   @@index([categoryId, currentBid(sort: Desc), currentBidAt(sort: Asc)])
@@ -113,6 +117,25 @@ model SocialLink {
   @@unique([personId, type])
   @@unique([type, url])
   @@index([personId])
+}
+
+model Skill {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  people PersonSkill[]
+}
+
+model PersonSkill {
+  personId String
+  skillId  String
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([personId, skillId])
+  @@index([skillId])
 }
 
 model Bid {
@@ -137,7 +160,7 @@ model Bid {
 
 model Payment {
   id                 String          @id @default(cuid())
-  userId             String
+  userId             String?
   personId           String
   bidId              String          @unique
   amount             Int
@@ -149,7 +172,7 @@ model Payment {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
   bid    Bid    @relation(fields: [bidId], references: [id], onDelete: Cascade)
 

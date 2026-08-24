@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planFulfillment, quantityFromChargeCents } from "./fulfillment";
+import { planFulfillment, quantityFromChargeCents, quotedChargeCentsFromMetadata } from "./fulfillment";
 
 describe("quantityFromChargeCents", () => {
   it("maps whole-dollar charges onto a $1 product cart", () => {
@@ -39,6 +39,23 @@ describe("planFulfillment", () => {
     ).toEqual({ action: "refund", reason: "amount_mismatch" });
   });
 
+  it("applies when quoted chargeAmountCents matches even if Dodo total includes tax", () => {
+    expect(
+      planFulfillment({
+        bidStatus: "PENDING",
+        storedAmountCents: 42200,
+        paidAmountCents: 49796,
+        quotedChargeCents: 42200,
+        decision: { ok: true, newBidCents: 42200, kind: "joined" },
+        eventType: "payment.succeeded",
+      }),
+    ).toEqual({
+      action: "apply",
+      kind: "joined",
+      newBidCents: 42200,
+    });
+  });
+
   it("refunds a stale concurrent target and does not apply", () => {
     expect(
       planFulfillment({
@@ -66,5 +83,12 @@ describe("planFulfillment", () => {
 
   it("ignores unrelated webhook types", () => {
     expect(planFulfillment({ ...pending, eventType: "ignored" })).toEqual({ action: "ignore" });
+  });
+});
+
+describe("quotedChargeCentsFromMetadata", () => {
+  it("parses chargeAmountCents from checkout metadata", () => {
+    expect(quotedChargeCentsFromMetadata({ chargeAmountCents: "42200" })).toBe(42200);
+    expect(quotedChargeCentsFromMetadata({ chargeAmountCents: "nope" })).toBeUndefined();
   });
 });

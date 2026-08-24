@@ -1,65 +1,47 @@
-import { prisma } from "@climb/db";
+import { prisma, isCategorySlug } from "@climb/db";
 import { moneyToCents, quoteCheckout } from "@climb/ranking";
 import { trackEvent } from "@/lib/analytics";
-import type { SessionPayload } from "@/lib/auth/session";
 import { AppError } from "@/lib/http";
 import { createProviderCheckout } from "@/services/payment.service";
+import { inferProfile } from "@/services/profile-infer";
 import { upsertProfile } from "@/services/profile.service";
 
 export { invalidateListingCache } from "@/services/listing-cache";
 
-function normalizeEmail(value: string | undefined | null) {
-  return value?.trim().toLowerCase() || "";
-}
-
-export function assertCanCheckoutListing(input: {
-  ownerUserId: string | null;
-  ownerEmail?: string | null;
-  session: SessionPayload | null;
-}) {
-  if (!input.ownerUserId) return;
-  const sessionUserId = input.session?.userId;
-  const sessionEmail = normalizeEmail(input.session?.email);
-  const ownerEmail = normalizeEmail(input.ownerEmail);
-  const owns =
-    Boolean(sessionUserId && sessionUserId === input.ownerUserId) ||
-    Boolean(sessionEmail && ownerEmail && sessionEmail === ownerEmail);
-  if (!owns) {
-    throw new AppError(
-      "listing_taken",
-      "This listing is already claimed. Use your own name or handle to take that rank.",
-      403,
-    );
-  }
-}
-
 export async function createCheckout(input: {
   identity: string;
-  category: string;
+  category?: string;
   name?: string;
   headline?: string;
+  skills?: string;
   targetBid?: number;
-  email?: string;
-  session: SessionPayload | null;
+  origin?: string;
 }) {
-  const { person: upserted } = await upsertProfile(input);
+  let category = input.category?.trim() ?? "";
+  let name = input.name?.trim();
+  let headline = input.headline?.trim();
+  let skills = input.skills?.trim();
+  if (!category || !isCategorySlug(category)) {
+    const inferred = await inferProfile(input.identity);
+    category = inferred.categorySlug;
+    name = name || inferred.fullName;
+    headline = headline || inferred.headline;
+    skills = skills || inferred.skills.join(", ");
+  }
+
+  const { person: upserted } = await upsertProfile({
+    identity: input.identity,
+    category,
+    name,
+    headline,
+    skills,
+  });
   const person = await prisma.person.findUnique({
     where: { id: upserted.id },
-    include: { category: true, user: true },
+    include: { category: true },
   });
   if (!person) {
     throw new AppError("profile_missing", "Could not load that listing.", 500);
-  }
-
-  assertCanCheckoutListing({
-    ownerUserId: person.userId,
-    ownerEmail: person.user?.email,
-    session: input.session,
-  });
-
-  const email = normalizeEmail(input.session?.email) || normalizeEmail(input.email);
-  if (!email || !email.includes("@")) {
-    throw new AppError("email_required", "Enter an email so we can start checkout.", 400);
   }
 
   const requestedTargetCents = input.targetBid != null ? moneyToCents(input.targetBid) : undefined;
@@ -82,8 +64,8 @@ export async function createCheckout(input: {
     targetBidCents: quote.targetBidCents,
     chargeAmountCents: quote.chargeAmountCents,
     identity: input.identity,
-    email,
     customerName: person.fullName,
+    origin: input.origin,
   });
 }
 

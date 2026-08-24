@@ -8,6 +8,8 @@ export const MIN_NEW_SPOT_CENTS = 500;
 
 export const LEADERBOARD_CACHE_TTL_SECONDS = 20;
 
+export const LEADERBOARD_PAGE_SIZE = 25;
+
 export function moneyToCents(value: MoneyInput): number {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) {
@@ -190,5 +192,5 @@ export function calculateTrendingScore(
   return scores[index] ?? 0;
 }
 
-export { parseIdentity } from "./identity";
-export type { ParsedIdentity } from "./identity";
+export { parseIdentity, parseProfileUrl } from "./identity";
+export type { ParsedIdentity, ParsedProfileUrl, ProfilePlatform } from "./identity";

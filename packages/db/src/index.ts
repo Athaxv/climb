@@ -1,6 +1,15 @@
 export { prisma } from "./client";
 export { Prisma } from "./generated/client";
 export {
+  CATEGORIES,
+  getClimbCategory,
+  isCategorySlug,
+  LEGACY_CATEGORY_SLUGS,
+  resolveCategorySlug,
+} from "./categories";
+export type { ClimbCategory, CategoryGroup } from "./categories";
+export { normalizeSkill, parseSkillList, skillSlug } from "./skills";
+export {
   getCategories,
   getLatestActivity,
   getLeaderboard,

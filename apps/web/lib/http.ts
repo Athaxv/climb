@@ -59,3 +59,14 @@ export function getClientIp(request: Request) {
 export function appUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 }
+
+/** Origin of the tab that called the API (correct local port; not a hardcoded 3000). */
+export function originFromRequest(request: Request) {
+  const origin = request.headers.get("origin")?.replace(/\/$/, "");
+  if (origin) return origin;
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return appUrl();
+  }
+}

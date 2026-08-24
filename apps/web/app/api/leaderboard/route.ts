@@ -14,11 +14,17 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const category = url.searchParams.get("category") || undefined;
     const q = url.searchParams.get("q") || undefined;
-    const people = await listLeaderboard({ categorySlug: category === "all" ? undefined : category, q });
+    const pageRaw = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+    const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+    const board = await listLeaderboard({
+      categorySlug: category === "all" ? undefined : category,
+      q,
+      page,
+    });
     if (!q) {
       await trackEvent(category ? "category_view" : "leaderboard_view", { category });
     }
-    return Response.json({ people });
+    return Response.json(board);
   } catch (error) {
     return jsonError(error);
   }

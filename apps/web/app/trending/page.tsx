@@ -18,10 +18,12 @@ export default async function TrendingPage() {
       <p className="mt-2 text-muted-foreground">
         Momentum, not just the highest bid. Recent views, bid growth, and rank improvement.
       </p>
-      <div className="mt-8 flex flex-col gap-3">
-        {people.map((person) => (
-          <PersonCard key={person.id} person={person} />
-        ))}
+      <div className="mt-8 flex flex-col gap-4 pt-2">
+        {people.length === 0 ? (
+          <p className="py-16 text-center text-muted-foreground">No one on this board yet. Claim a spot.</p>
+        ) : (
+          people.map((person) => <PersonCard key={person.id} person={person} />)
+        )}
       </div>
     </main>
   );

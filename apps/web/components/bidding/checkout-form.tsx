@@ -2,149 +2,121 @@
 
 import { formatUsdFromCents, MIN_NEW_SPOT_CENTS } from "@climb/ranking";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BidStepper } from "@/components/bidding/bid-stepper";
+import { InferConfirm } from "@/components/bidding/infer-confirm";
+import { startCheckout } from "@/lib/start-checkout";
+import { useProfileInfer } from "@/lib/use-profile-infer";
 
 export function CheckoutForm({
   name,
   category,
   bid,
-  categories,
   canceled,
-  sessionEmail,
 }: {
   name: string;
   category: string;
   bid: string;
   categories: { slug: string; name: string }[];
   canceled?: boolean;
-  sessionEmail?: string;
 }) {
   const router = useRouter();
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const submitWasReady = useRef(false);
   const initialBid = Number.parseInt(bid, 10);
+  const floor = MIN_NEW_SPOT_CENTS / 100;
   const [identity, setIdentity] = useState(name);
-  const [selectedCategory, setSelectedCategory] = useState(category);
-  const [email, setEmail] = useState(sessionEmail ?? "");
   const [targetBid, setTargetBid] = useState(
-    Number.isFinite(initialBid) && initialBid > 0 ? initialBid : MIN_NEW_SPOT_CENTS / 100,
+    Number.isFinite(initialBid) && initialBid > 0 ? initialBid : floor,
   );
   const [error, setError] = useState<string | null>(canceled ? "Checkout was canceled. You can try again." : null);
   const [pending, setPending] = useState(false);
+  const { status, preview, setCategorySlug } = useProfileInfer(identity);
+  const appliedHint = useRef(false);
 
-  const hasSessionEmail = Boolean(sessionEmail);
-  const emailOk = hasSessionEmail || /.+@.+\..+/.test(email.trim());
-  const canSubmit = identity.trim().length >= 3 && selectedCategory.length > 0 && emailOk;
+  useEffect(() => {
+    appliedHint.current = false;
+  }, [identity]);
+
+  useEffect(() => {
+    if (!category || !preview || appliedHint.current) return;
+    appliedHint.current = true;
+    setCategorySlug(category);
+  }, [category, preview, setCategorySlug]);
+
+  const inferReady = status === "ready" || status === "error";
+  const canSubmit = identity.trim().length >= 8 && inferReady && Boolean(preview?.categorySlug);
   const previewCents = useMemo(() => Math.max(MIN_NEW_SPOT_CENTS, targetBid * 100), [targetBid]);
+
+  useEffect(() => {
+    if (canSubmit && !submitWasReady.current) {
+      submitRef.current?.focus();
+    }
+    submitWasReady.current = canSubmit;
+  }, [canSubmit]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSubmit || pending) return;
+    if (!canSubmit || pending || !preview) return;
     setPending(true);
     setError(null);
-    try {
-      const response = await fetch("/api/bids/checkout", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          identity: identity.trim(),
-          category: selectedCategory,
-          name: identity.trim(),
-          targetBid,
-          email: email.trim() || undefined,
-        }),
-      });
-      const data = (await response.json()) as { url?: string; message?: string; error?: string };
-      if (!response.ok || !data.url) {
-        setError(
-          data.error === "listing_taken"
-            ? data.message || "This listing is already claimed. Use your own name or handle."
-            : data.message || "Could not start checkout.",
-        );
-        setPending(false);
-        return;
-      }
-      router.push(data.url);
-    } catch {
-      setError("Could not start checkout.");
+    const result = await startCheckout({
+      identity: identity.trim(),
+      category: preview.categorySlug,
+      name: preview.fullName || undefined,
+      headline: preview.headline || undefined,
+      skills: preview.skills.join(", ") || undefined,
+      targetBid,
+    });
+    if (!result.ok) {
+      setError(result.message);
       setPending(false);
+      return;
     }
+    router.push(result.url);
   }
 
   return (
     <form onSubmit={onSubmit} className="mt-8 text-left">
       {error ? (
-        <p className="mb-4 rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-sm">{error}</p>
+        <p className="mb-4 rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-sm" role="alert">
+          {error}
+        </p>
       ) : null}
       <label className="block text-sm text-muted-foreground" htmlFor="create-identity">
-        Your name or @handle
+        LinkedIn, GitHub, X, or website URL
       </label>
       <input
         id="create-identity"
         required
-        minLength={3}
+        type="text"
+        inputMode="url"
+        autoComplete="url"
+        minLength={8}
+        maxLength={500}
         value={identity}
         onChange={(event) => setIdentity(event.target.value)}
-        placeholder="Your name or @username"
+        placeholder="Paste LinkedIn, GitHub, X, or website URL"
         className="mt-1 h-11 w-full rounded-[var(--radius)] border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      {hasSessionEmail ? null : (
-        <>
-          <label className="mt-4 block text-sm text-muted-foreground" htmlFor="create-email">
-            Email
-          </label>
-          <input
-            id="create-email"
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            className="mt-1 h-11 w-full rounded-[var(--radius)] border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </>
-      )}
-      <label className="mt-4 block text-sm text-muted-foreground" htmlFor="create-category">
-        Category
-      </label>
-      <select
-        id="create-category"
-        required
-        value={selectedCategory}
-        onChange={(event) => setSelectedCategory(event.target.value)}
-        className="mt-1 h-11 w-full cursor-pointer rounded-[var(--radius)] border border-input bg-card px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <option value="">Category</option>
-        {categories.map((item) => (
-          <option key={item.slug} value={item.slug}>
-            {item.name}
-          </option>
-        ))}
-      </select>
-      <label className="mt-4 block text-sm text-muted-foreground" htmlFor="create-bid">
+      <div className="mt-2 min-h-5">
+        <InferConfirm status={status} />
+      </div>
+      <p className="mt-6 text-center text-sm text-muted-foreground" id="create-bid-label">
         Target bid
-      </label>
-      <div className="mt-1 flex h-11 items-center rounded-[var(--radius)] border border-input bg-card px-3">
-        <span className="text-sm text-muted-foreground" aria-hidden>
-          $
-        </span>
-        <input
-          id="create-bid"
-          inputMode="numeric"
-          value={targetBid}
-          onChange={(event) => {
-            const next = Number.parseInt(event.target.value.replace(/\D/g, ""), 10);
-            setTargetBid(Number.isNaN(next) ? MIN_NEW_SPOT_CENTS / 100 : next);
-          }}
-          className="h-full w-full bg-transparent pl-1 text-sm tabular-nums outline-none"
-        />
+      </p>
+      <div className="mt-2">
+        <BidStepper id="create-bid" value={targetBid} min={floor} onChange={setTargetBid} labelledBy="create-bid-label" />
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         The server sets the charge. Requested listing amount:{" "}
         <span className="font-semibold text-primary">{formatUsdFromCents(previewCents)}</span>
       </p>
       <button
+        ref={submitRef}
         type="submit"
         disabled={!canSubmit || pending}
-        className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-[var(--radius)] bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-6 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-[var(--radius)] bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
         {pending ? "Starting checkout…" : "Pay to claim"}
       </button>

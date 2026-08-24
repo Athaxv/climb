@@ -3,7 +3,7 @@ export type PaymentEventType = "payment.succeeded" | "payment.failed" | "payment
 export type CreateCheckoutInput = {
   amountCents: number;
   currency: string;
-  customerEmail: string;
+  customerEmail?: string;
   customerName?: string;
   returnUrl: string;
   metadata: Record<string, string>;
@@ -17,6 +17,7 @@ export type CheckoutResult = {
 export type RetrievedCheckout = {
   checkoutId: string;
   paymentStatus: string;
+  paymentId?: string;
   customerEmail?: string;
   metadata: Record<string, string>;
 };

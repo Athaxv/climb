@@ -2,24 +2,24 @@ export function WhyClimb() {
   const items = [
     {
       title: "Be seen first",
-      body: "Higher seats sit at the top of a public board people actually open.",
+      body: "Get discovered by hiring. Higher seats sit where recruiters actually look.",
     },
     {
-      title: "Rank is public",
-      body: "Your position and bid are visible. Share the rank you paid to hold.",
+      title: "Get seen by agents",
+      body: "Talent agents watch who is already visible. Climb, then get inbound.",
     },
     {
-      title: "Discovery follows the board",
-      body: "Profile visits follow the list. Climb, then get found.",
+      title: "Bid for visibility",
+      body: "Add your profile and skills, then bid for the seat you want.",
     },
   ];
 
   return (
-    <section className="mx-auto mt-4 grid w-full max-w-5xl gap-3 px-4 sm:grid-cols-3 sm:gap-5 sm:px-6">
+    <section className="mx-auto mt-10 grid w-full max-w-5xl gap-6 px-4 sm:grid-cols-3 sm:gap-10 sm:px-6">
       {items.map((item) => (
         <div key={item.title}>
-          <h2 className="text-sm font-semibold text-foreground">{item.title}</h2>
-          <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">{item.body}</p>
+          <h2 className="text-sm font-semibold text-primary sm:text-base">{item.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
         </div>
       ))}
     </section>

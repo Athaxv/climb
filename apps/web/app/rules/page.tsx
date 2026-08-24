@@ -28,8 +28,8 @@ export default function RulesPage() {
           of that amount. Payments are confirmed on the server — a browser saying “paid” does not move the board.
         </p>
         <p>
-          Anyone can browse. Enter a name, @handle, or URL and pay to claim <span className="text-foreground">your</span>{" "}
-          listing. Only the owner can raise that row later. Rank only moves after payment is confirmed.
+          Anyone can browse. Paste a LinkedIn, GitHub, X, or website URL and pay to join or raise that listing.
+          Rank only moves after payment is confirmed.
         </p>
       </div>
     </main>

@@ -134,6 +134,7 @@ exports.Prisma.CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
   slug: 'slug',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt'
 };
 
@@ -163,6 +164,17 @@ exports.Prisma.SocialLinkScalarFieldEnum = {
   type: 'type',
   url: 'url',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.SkillScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  slug: 'slug'
+};
+
+exports.Prisma.PersonSkillScalarFieldEnum = {
+  personId: 'personId',
+  skillId: 'skillId'
 };
 
 exports.Prisma.BidScalarFieldEnum = {
@@ -305,6 +317,8 @@ exports.Prisma.ModelName = {
   Category: 'Category',
   Person: 'Person',
   SocialLink: 'SocialLink',
+  Skill: 'Skill',
+  PersonSkill: 'PersonSkill',
   Bid: 'Bid',
   Payment: 'Payment',
   ProfileView: 'ProfileView',

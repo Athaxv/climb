@@ -1,17 +1,18 @@
-"use client";
-
 import type { LeaderboardPerson } from "@climb/db";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
 import { BadgeCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useFocusClaim } from "@/components/bidding/claim-intent";
-import { cn, hueFromString, initials } from "@/lib/utils";
+import { ClaimRankButton } from "@/components/people/claim-rank-button";
+import { PersonAvatar } from "@/components/people/person-avatar";
+import { cn } from "@/lib/utils";
+
+export { PersonAvatar } from "@/components/people/person-avatar";
 
 type PersonCardProps = {
   person: LeaderboardPerson;
   showClaim?: boolean;
   emphasizeRank?: boolean;
+  priority?: boolean;
 };
 
 const PLATFORM_ORDER = ["LINKEDIN", "GITHUB", "TWITTER", "WEBSITE", "PORTFOLIO"] as const;
@@ -55,29 +56,12 @@ const PLATFORM_LABELS: Record<string, string> = {
   PORTFOLIO: "Portfolio",
 };
 
-export function PersonAvatar({
-  name,
-  username,
-  className = "size-8",
-}: {
-  name: string;
-  username: string;
-  className?: string;
-}) {
-  const hue = hueFromString(username);
-  return (
-    <div
-      className={`grid shrink-0 place-items-center rounded-md text-[11px] font-semibold text-white ${className}`}
-      style={{ background: `hsl(${hue} 32% 42%)` }}
-      aria-hidden
-    >
-      {initials(name)}
-    </div>
-  );
-}
-
-export function PersonCard({ person, showClaim = true, emphasizeRank = true }: PersonCardProps) {
-  const focusClaim = useFocusClaim();
+export function PersonCard({
+  person,
+  showClaim = true,
+  emphasizeRank = true,
+  priority = false,
+}: PersonCardProps) {
   const minToTakeCents = calculateMinimumBidCents(person.currentBid);
   const minToTakeDollars = minToTakeCents / 100;
   const isFirst = emphasizeRank && person.rank === 1;
@@ -88,69 +72,27 @@ export function PersonCard({ person, showClaim = true, emphasizeRank = true }: P
     person.socialLinks.some((link) => link.type === type),
   );
 
-  const rootRef = useRef<HTMLElement>(null);
-  const skipProfileNav = useRef(false);
-  const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    if (!revealed) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setRevealed(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [revealed]);
-
-  function onCardPointerDown(event: React.PointerEvent<HTMLElement>) {
-    if (event.pointerType !== "touch") return;
-    if (!revealed) {
-      skipProfileNav.current = true;
-      setRevealed(true);
-    }
-  }
-
-  function onProfileClick(event: React.MouseEvent<HTMLAnchorElement>) {
-    if (skipProfileNav.current) {
-      event.preventDefault();
-      skipProfileNav.current = false;
-    }
-  }
-
   return (
     <article
-      ref={rootRef}
       id={`person-${person.username}`}
-      onPointerDown={onCardPointerDown}
-      data-revealed={revealed || undefined}
       className={cn(
         "group relative overflow-visible transition-[border-color,background-color,box-shadow] duration-150",
         isFirst &&
           "rounded-[var(--radius)] border-2 border-primary bg-primary/[0.06] px-3 py-3 shadow-[0_8px_28px_-10px] shadow-primary/40",
         isPodium && "rounded-[var(--radius)] border border-primary bg-card px-3 py-2.5",
-        !isFirst &&
-          !isPodium &&
-          "rounded-md px-2 py-2 hover:bg-muted/50 focus-within:bg-muted/50 data-[revealed]:bg-muted/50",
+        !isFirst && !isPodium && "rounded-md px-2 py-2 hover:bg-muted/50 focus-within:bg-muted/50",
       )}
     >
       {showClaim ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            focusClaim({ category: person.category.slug, bid: minToTakeDollars });
-          }}
-          className="pointer-events-none absolute top-0 left-1/2 z-10 min-h-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-primary px-3 py-1.5 text-xs font-bold whitespace-nowrap text-primary-foreground opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-data-[revealed]:pointer-events-auto group-data-[revealed]:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {claimLabel}
-        </button>
+        <ClaimRankButton
+          category={person.category.slug}
+          bidDollars={minToTakeDollars}
+          label={claimLabel}
+        />
       ) : null}
       <div className="flex items-center gap-2.5 sm:gap-3">
         <Link
           href={`/p/${person.username}`}
-          onClick={onProfileClick}
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3"
         >
           {isFirst || isPodium ? (
@@ -165,7 +107,9 @@ export function PersonCard({ person, showClaim = true, emphasizeRank = true }: P
           <PersonAvatar
             name={person.fullName}
             username={person.username}
+            imageUrl={person.imageUrl}
             className={isFirst ? "size-10" : "size-8"}
+            priority={priority}
           />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">

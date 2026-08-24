@@ -1,7 +1,7 @@
 import { formatUsdFromCents } from "@climb/ranking";
 import Link from "next/link";
 import { formatTimeAgo } from "@/lib/utils";
-import { PersonAvatar } from "@/components/people/person-card";
+import { PersonAvatar } from "@/components/people/person-avatar";
 
 type Activity = {
   id: string;
@@ -9,6 +9,7 @@ type Activity = {
   createdAt: Date;
   username: string;
   fullName: string;
+  imageUrl?: string | null;
   rank: number | null;
 };
 
@@ -25,7 +26,12 @@ export function LatestActivity({ items }: { items: Activity[] }) {
               href={`/p/${item.username}`}
               className="flex items-center gap-3 py-2.5 transition-colors duration-150 hover:bg-muted/60"
             >
-              <PersonAvatar name={item.fullName} username={item.username} className="size-7" />
+              <PersonAvatar
+                name={item.fullName}
+                username={item.username}
+                imageUrl={item.imageUrl}
+                className="size-7"
+              />
               <span className="min-w-0 flex-1 truncate text-sm">
                 <span className="font-medium text-foreground">{item.fullName}</span>
                 {item.rank != null ? (

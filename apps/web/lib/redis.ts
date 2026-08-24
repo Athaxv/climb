@@ -6,9 +6,17 @@ type RedisClient = {
   del(keys: string[]): Promise<void>;
   incr(key: string): Promise<number>;
   expire(key: string, ttlSeconds: number): Promise<void>;
+  incrWithTtl(key: string, ttlSeconds: number): Promise<number>;
 };
 
 let client: Redis | null | undefined;
+let skipUntil = 0;
+
+const INCR_EXPIRE = `
+local n = redis.call('INCR', KEYS[1])
+if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+return n
+`;
 
 function getClient(): Redis | null {
   if (client !== undefined) return client;
@@ -22,6 +30,8 @@ function getClient(): Redis | null {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
       lazyConnect: true,
+      connectTimeout: 2000,
+      commandTimeout: 1500,
     });
     client.on("error", () => {
       /* fail open */
@@ -34,6 +44,7 @@ function getClient(): Redis | null {
 }
 
 async function withRedis<T>(fn: (redis: Redis) => Promise<T>): Promise<T | null> {
+  if (Date.now() < skipUntil) return null;
   const redis = getClient();
   if (!redis) return null;
   try {
@@ -42,6 +53,7 @@ async function withRedis<T>(fn: (redis: Redis) => Promise<T>): Promise<T | null>
     }
     return await fn(redis);
   } catch {
+    skipUntil = Date.now() + 15_000;
     return null;
   }
 }
@@ -62,6 +74,13 @@ export const redisCache: RedisClient = {
   },
   async expire(key, ttlSeconds) {
     await withRedis((redis) => redis.expire(key, ttlSeconds));
+  },
+  async incrWithTtl(key, ttlSeconds) {
+    return (
+      (await withRedis((redis) =>
+        redis.eval(INCR_EXPIRE, 1, key, String(ttlSeconds)) as Promise<number>,
+      )) ?? 0
+    );
   },
 };
 

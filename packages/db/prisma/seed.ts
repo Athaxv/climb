@@ -4,6 +4,9 @@ import { PrismaClient } from "../src/generated/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+    throw new Error("Refusing to seed in production. Set ALLOW_SEED=1 if you really mean to wipe listings.");
+  }
   await prisma.personSkill.deleteMany();
   await prisma.skill.deleteMany();
   await prisma.analyticsEvent.deleteMany();

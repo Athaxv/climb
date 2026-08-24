@@ -5,12 +5,9 @@ export async function rateLimit(options: {
   limit: number;
   windowSeconds: number;
 }): Promise<{ ok: boolean; remaining: number }> {
-  const count = await redisCache.incr(options.key);
+  const count = await redisCache.incrWithTtl(options.key, options.windowSeconds);
   if (count === 0) {
     return { ok: true, remaining: options.limit };
-  }
-  if (count === 1) {
-    await redisCache.expire(options.key, options.windowSeconds);
   }
   if (count > options.limit) {
     return { ok: false, remaining: 0 };

@@ -9,6 +9,8 @@ export type ProfileSignals = {
   name?: string;
   bio?: string;
   headline?: string;
+  imageUrl?: string;
+  location?: string;
   topics: string[];
 };
 
@@ -17,6 +19,9 @@ export type InferredProfile = {
   headline: string;
   categorySlug: string;
   skills: string[];
+  imageUrl?: string;
+  bio?: string;
+  location?: string;
   source: "groq" | "heuristic";
 };
 
@@ -28,9 +33,38 @@ export function heuristicCategory(platform: ProfilePlatform): string {
   return "other";
 }
 
+export function sanitizeHttpUrl(raw: string | undefined, base?: string): string | undefined {
+  if (!raw?.trim()) return undefined;
+  let value = decodeEntities(raw.trim());
+  if (value.startsWith("//")) value = `https:${value}`;
+  try {
+    const url = base ? new URL(value, base) : new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if (url.href.length > 2048) return undefined;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+function clip(value: string | undefined, max: number): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, max);
+}
+
+export function listingMedia(signals?: Pick<ProfileSignals, "imageUrl" | "bio" | "location" | "canonicalUrl">) {
+  return {
+    imageUrl: sanitizeHttpUrl(signals?.imageUrl, signals?.canonicalUrl),
+    bio: clip(signals?.bio, 500),
+    location: clip(signals?.location, 80),
+  };
+}
+
 export function heuristicInfer(parsed: ParsedProfileUrl, signals?: ProfileSignals): InferredProfile {
   const fullName = signals?.name?.trim() || parsed.fullName;
   const fromBio = signals?.headline?.trim() || signals?.bio?.trim() || "";
+  const media = listingMedia(signals);
   return {
     fullName,
     headline: (fromBio || `${fullName} on Climb`).slice(0, 160),
@@ -38,6 +72,7 @@ export function heuristicInfer(parsed: ParsedProfileUrl, signals?: ProfileSignal
     skills: parseSkillList(signals?.topics ?? [])
       .slice(0, 8)
       .map((skill) => skill.name),
+    ...media,
     source: "heuristic",
   };
 }
@@ -80,6 +115,9 @@ export function mergeClassification(
     headline: (groq?.headline?.trim() || fallback.headline).slice(0, 160),
     categorySlug,
     skills,
+    imageUrl: fallback.imageUrl,
+    bio: fallback.bio,
+    location: fallback.location,
     source: groq ? "groq" : "heuristic",
   };
 }
@@ -106,10 +144,39 @@ function attr(html: string, key: string) {
   return property.exec(html)?.[1] || contentFirst.exec(html)?.[1] || "";
 }
 
-function topicsFromJsonLd(html: string): { name?: string; headline?: string; topics: string[] } {
+function imageFromUnknown(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return imageFromUnknown(value[0]);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.url === "string") return record.url;
+    if (typeof record.contentUrl === "string") return record.contentUrl;
+  }
+  return undefined;
+}
+
+function locationFromUnknown(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.addressLocality === "string") return record.addressLocality;
+    if (typeof record.name === "string") return record.name;
+  }
+  return undefined;
+}
+
+function topicsFromJsonLd(html: string): {
+  name?: string;
+  headline?: string;
+  imageUrl?: string;
+  location?: string;
+  topics: string[];
+} {
   const topics: string[] = [];
   let name: string | undefined;
   let headline: string | undefined;
+  let imageUrl: string | undefined;
+  let location: string | undefined;
   const blocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) ?? [];
   for (const block of blocks) {
     const json = /<script[^>]*>([\s\S]*?)<\/script>/i.exec(block)?.[1];
@@ -120,6 +187,8 @@ function topicsFromJsonLd(html: string): { name?: string; headline?: string; top
       for (const node of nodes) {
         if (typeof node.name === "string" && !name) name = node.name;
         if (typeof node.jobTitle === "string" && !headline) headline = node.jobTitle;
+        if (!imageUrl) imageUrl = imageFromUnknown(node.image);
+        if (!location) location = locationFromUnknown(node.address) || locationFromUnknown(node.homeLocation);
         if (Array.isArray(node.knowsAbout)) {
           for (const item of node.knowsAbout) {
             if (typeof item === "string") topics.push(item);
@@ -130,17 +199,28 @@ function topicsFromJsonLd(html: string): { name?: string; headline?: string; top
       /* ignore malformed json-ld */
     }
   }
-  return { name, headline, topics };
+  return { name, headline, imageUrl, location, topics };
 }
 
-export function extractHtmlSignals(html: string): Pick<ProfileSignals, "name" | "bio" | "headline" | "topics"> {
+export function extractHtmlSignals(
+  html: string,
+  baseUrl?: string,
+): Pick<ProfileSignals, "name" | "bio" | "headline" | "imageUrl" | "location" | "topics"> {
   const jsonLd = topicsFromJsonLd(html);
   const title = decodeEntities(attr(html, "og:title") || attr(html, "twitter:title"));
   const description = decodeEntities(attr(html, "og:description") || attr(html, "twitter:description"));
+  const rawImage =
+    attr(html, "og:image") ||
+    attr(html, "og:image:url") ||
+    attr(html, "twitter:image") ||
+    attr(html, "twitter:image:src") ||
+    jsonLd.imageUrl;
   return {
     name: jsonLd.name || (title.includes("|") ? title.split("|")[0]?.trim() : title) || undefined,
-    bio: description || undefined,
-    headline: jsonLd.headline || description.slice(0, 160) || undefined,
+    bio: clip(description, 500),
+    headline: jsonLd.headline || clip(description, 160),
+    imageUrl: sanitizeHttpUrl(rawImage, baseUrl),
+    location: clip(jsonLd.location, 80),
     topics: jsonLd.topics,
   };
 }

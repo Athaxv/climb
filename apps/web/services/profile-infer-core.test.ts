@@ -6,6 +6,7 @@ import {
   heuristicInfer,
   mergeClassification,
   parseGroqClassification,
+  sanitizeHttpUrl,
 } from "./profile-infer-core";
 
 describe("profile inference", () => {
@@ -52,24 +53,42 @@ describe("profile inference", () => {
         handle: "octocat",
         canonicalUrl: parsed.canonicalUrl,
         topics: ["TypeScript"],
+        imageUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+        bio: "Builds ranking systems",
+        location: "San Francisco",
       },
       { categorySlug: "not-a-board", fullName: "Octo Cat", skills: ["Go"] },
     );
     expect(merged.categorySlug).toBe("engineering");
     expect(merged.fullName).toBe("Octo Cat");
     expect(merged.skills).toContain("Go");
+    expect(merged.imageUrl).toBe("https://avatars.githubusercontent.com/u/1?v=4");
+    expect(merged.bio).toBe("Builds ranking systems");
+    expect(merged.location).toBe("San Francisco");
     expect(merged.source).toBe("groq");
+  });
+
+  it("keeps only http(s) image URLs", () => {
+    expect(sanitizeHttpUrl("https://avatars.githubusercontent.com/u/1?v=4")).toBe(
+      "https://avatars.githubusercontent.com/u/1?v=4",
+    );
+    expect(sanitizeHttpUrl("//cdn.example.com/me.png")).toBe("https://cdn.example.com/me.png");
+    expect(sanitizeHttpUrl("/me.png", "https://example.com/p/maya")).toBe("https://example.com/me.png");
+    expect(sanitizeHttpUrl("javascript:alert(1)")).toBeUndefined();
+    expect(sanitizeHttpUrl("data:image/png;base64,abc")).toBeUndefined();
   });
 
   it("reads Open Graph tags from a public HTML fixture", () => {
     const html = `
       <meta property="og:title" content="Maya Chen | Engineer" />
       <meta name="og:description" content="Building ranking systems in TypeScript" />
-      <script type="application/ld+json">{"name":"Maya Chen","jobTitle":"Staff Engineer","knowsAbout":["TypeScript","Postgres"]}</script>
+      <meta property="og:image" content="https://cdn.example.com/maya.jpg" />
+      <script type="application/ld+json">{"name":"Maya Chen","jobTitle":"Staff Engineer","image":{"url":"https://cdn.example.com/maya-ld.jpg"},"knowsAbout":["TypeScript","Postgres"]}</script>
     `;
-    const signals = extractHtmlSignals(html);
+    const signals = extractHtmlSignals(html, "https://example.com");
     expect(signals.name).toBe("Maya Chen");
     expect(signals.headline).toBe("Staff Engineer");
+    expect(signals.imageUrl).toBe("https://cdn.example.com/maya.jpg");
     expect(signals.topics).toEqual(["TypeScript", "Postgres"]);
   });
 });

@@ -14,35 +14,42 @@ export async function createCheckout(input: {
   name?: string;
   headline?: string;
   skills?: string;
+  imageUrl?: string;
+  bio?: string;
+  location?: string;
   targetBid?: number;
   origin?: string;
+  ownerUserId?: string;
 }) {
   let category = input.category?.trim() ?? "";
   let name = input.name?.trim();
   let headline = input.headline?.trim();
   let skills = input.skills?.trim();
+  let imageUrl = input.imageUrl;
+  let bio = input.bio;
+  let location = input.location;
   if (!category || !isCategorySlug(category)) {
     const inferred = await inferProfile(input.identity);
     category = inferred.categorySlug;
     name = name || inferred.fullName;
     headline = headline || inferred.headline;
     skills = skills || inferred.skills.join(", ");
+    imageUrl = imageUrl || inferred.imageUrl;
+    bio = bio || inferred.bio;
+    location = location || inferred.location;
   }
 
-  const { person: upserted } = await upsertProfile({
+  const { person } = await upsertProfile({
     identity: input.identity,
     category,
     name,
     headline,
     skills,
+    imageUrl,
+    bio,
+    location,
+    ownerUserId: input.ownerUserId,
   });
-  const person = await prisma.person.findUnique({
-    where: { id: upserted.id },
-    include: { category: true },
-  });
-  if (!person) {
-    throw new AppError("profile_missing", "Could not load that listing.", 500);
-  }
 
   const requestedTargetCents = input.targetBid != null ? moneyToCents(input.targetBid) : undefined;
   const quote = quoteCheckout({
@@ -53,7 +60,7 @@ export async function createCheckout(input: {
     throw new AppError("bid_too_low", "That bid is too low for this listing.");
   }
 
-  await trackEvent("bid_quoted", {
+  void trackEvent("bid_quoted", {
     username: person.username,
     targetBidCents: quote.targetBidCents,
     chargeAmountCents: quote.chargeAmountCents,

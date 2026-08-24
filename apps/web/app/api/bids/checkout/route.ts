@@ -1,8 +1,10 @@
 import { trackEvent } from "@/lib/analytics";
+import { sessionFromRequest } from "@/lib/auth/session";
 import { getClientIp, jsonError, originFromRequest } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkoutSchema } from "@/lib/validation/schemas";
 import { createCheckout } from "@/services/bid.service";
+import { usableOwnerUserId } from "@/services/listing-merge-core";
 
 export async function POST(request: Request) {
   try {
@@ -13,10 +15,12 @@ export async function POST(request: Request) {
     }
 
     const body = checkoutSchema.parse(await request.json());
-    await trackEvent("bid_started", { identity: body.identity });
+    const session = await sessionFromRequest(request);
+    void trackEvent("bid_started", { identity: body.identity });
     const checkout = await createCheckout({
       ...body,
       origin: originFromRequest(request),
+      ownerUserId: usableOwnerUserId(session?.userId),
     });
     return Response.json(checkout);
   } catch (error) {

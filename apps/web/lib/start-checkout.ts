@@ -4,6 +4,9 @@ export type CheckoutRequest = {
   name?: string;
   headline?: string;
   skills?: string;
+  imageUrl?: string;
+  bio?: string;
+  location?: string;
   targetBid: number;
 };
 
@@ -22,6 +25,9 @@ export async function startCheckout(input: CheckoutRequest): Promise<CheckoutRes
         ...(input.name?.trim() ? { name: input.name.trim() } : {}),
         ...(input.headline?.trim() ? { headline: input.headline.trim() } : {}),
         ...(input.skills?.trim() ? { skills: input.skills.trim() } : {}),
+        ...(input.imageUrl?.trim() ? { imageUrl: input.imageUrl.trim() } : {}),
+        ...(input.bio?.trim() ? { bio: input.bio.trim() } : {}),
+        ...(input.location?.trim() ? { location: input.location.trim() } : {}),
         targetBid: input.targetBid,
       }),
     });

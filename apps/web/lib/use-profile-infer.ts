@@ -46,6 +46,9 @@ export function useProfileInfer(identity: string) {
           headline: data.headline ?? "",
           categorySlug: data.categorySlug,
           skills: Array.isArray(data.skills) ? data.skills.slice(0, 8) : [],
+          imageUrl: data.imageUrl,
+          bio: data.bio,
+          location: data.location,
         });
         setStatus("ready");
       } catch {

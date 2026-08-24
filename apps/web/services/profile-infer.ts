@@ -1,9 +1,11 @@
 import { parseProfileUrl, type ParsedProfileUrl } from "@climb/ranking";
 import { AppError } from "@/lib/http";
+import { cacheGetJson, cacheSetJson } from "@/lib/redis";
 import {
   extractHtmlSignals,
   groqSystemPrompt,
   heuristicInfer,
+  listingMedia,
   mergeClassification,
   parseGroqClassification,
   type InferredProfile,
@@ -14,8 +16,10 @@ export {
   extractHtmlSignals,
   heuristicCategory,
   heuristicInfer,
+  listingMedia,
   mergeClassification,
   parseGroqClassification,
+  sanitizeHttpUrl,
   groqSystemPrompt,
 } from "./profile-infer-core";
 export type { InferredProfile, ProfileSignals } from "./profile-infer-core";
@@ -24,6 +28,7 @@ const FETCH_TIMEOUT_MS = 3000;
 const HTML_LIMIT = 200_000;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const INFER_CACHE_TTL_SECONDS = 3600;
 
 function groqKey() {
   const key = process.env.GROQ_API_KEY?.trim();
@@ -50,26 +55,37 @@ async function fetchText(url: string, headers?: HeadersInit): Promise<string | n
   }
 }
 
-async function fetchGitHubSignals(handle: string): Promise<Partial<ProfileSignals>> {
-  const userRaw = await fetchText(`https://api.github.com/users/${encodeURIComponent(handle)}`, {
+function githubHeaders(): HeadersInit {
+  const token = process.env.GITHUB_TOKEN?.trim();
+  return {
     accept: "application/vnd.github+json",
-  });
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function fetchGitHubSignals(handle: string): Promise<Partial<ProfileSignals>> {
+  const headers = githubHeaders();
+  const [userRaw, reposRaw] = await Promise.all([
+    fetchText(`https://api.github.com/users/${encodeURIComponent(handle)}`, headers),
+    fetchText(
+      `https://api.github.com/users/${encodeURIComponent(handle)}/repos?sort=updated&per_page=8`,
+      headers,
+    ),
+  ]);
   if (!userRaw) return {};
   let user: {
     name?: string | null;
     bio?: string | null;
     company?: string | null;
     login?: string;
+    avatar_url?: string | null;
+    location?: string | null;
   };
   try {
     user = JSON.parse(userRaw) as typeof user;
   } catch {
     return {};
   }
-  const reposRaw = await fetchText(
-    `https://api.github.com/users/${encodeURIComponent(handle)}/repos?sort=updated&per_page=8`,
-    { accept: "application/vnd.github+json" },
-  );
   const topics: string[] = [];
   if (reposRaw) {
     try {
@@ -85,6 +101,8 @@ async function fetchGitHubSignals(handle: string): Promise<Partial<ProfileSignal
     name: user.name || user.login || undefined,
     bio: user.bio || undefined,
     headline: user.bio || user.company || undefined,
+    imageUrl: user.avatar_url || undefined,
+    location: user.location || undefined,
     topics,
   };
 }
@@ -92,7 +110,7 @@ async function fetchGitHubSignals(handle: string): Promise<Partial<ProfileSignal
 async function fetchPageSignals(url: string): Promise<Partial<ProfileSignals>> {
   const html = await fetchText(url, { accept: "text/html" });
   if (!html) return {};
-  return extractHtmlSignals(html);
+  return extractHtmlSignals(html, url);
 }
 
 export async function collectSignals(parsed: ParsedProfileUrl): Promise<ProfileSignals> {
@@ -107,6 +125,8 @@ export async function collectSignals(parsed: ParsedProfileUrl): Promise<ProfileS
     name: extra.name,
     bio: extra.bio,
     headline: extra.headline,
+    imageUrl: extra.imageUrl,
+    location: extra.location,
     topics: extra.topics ?? [],
   };
 }
@@ -150,9 +170,24 @@ export async function inferProfile(identity: string): Promise<InferredProfile> {
   if (!parsed) {
     throw new AppError("invalid_identity", "Paste a LinkedIn, GitHub, X, or website URL.");
   }
+  const cacheKey = `infer:${parsed.canonicalUrl}`;
+  const cached = await cacheGetJson<InferredProfile>(cacheKey);
+  if (cached) return cached;
   const signals = await collectSignals(parsed);
   const groq = await classifyWithGroq(signals);
-  return mergeClassification(parsed, signals, groq);
+  const result = mergeClassification(parsed, signals, groq);
+  await cacheSetJson(cacheKey, result, INFER_CACHE_TTL_SECONDS);
+  return result;
+}
+
+export async function inferListingMedia(identity: string): Promise<{
+  imageUrl?: string;
+  bio?: string;
+  location?: string;
+}> {
+  const parsed = parseProfileUrl(identity);
+  if (!parsed) return {};
+  return listingMedia(await collectSignals(parsed));
 }
 
 export function fallbackWhenKeyUnset(identity: string) {

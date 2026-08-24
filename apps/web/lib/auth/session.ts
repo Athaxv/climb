@@ -54,3 +54,7 @@ export function readSessionCookie(cookieHeader: string | null | undefined): stri
   }
   return undefined;
 }
+
+export async function sessionFromRequest(request: Request): Promise<SessionPayload | null> {
+  return readSession(readSessionCookie(request.headers.get("cookie")));
+}

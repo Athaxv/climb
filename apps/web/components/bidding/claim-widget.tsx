@@ -129,6 +129,9 @@ function ClaimBar({
       name: preview.fullName || undefined,
       headline: preview.headline || undefined,
       skills: preview.skills.join(", ") || undefined,
+      imageUrl: preview.imageUrl,
+      bio: preview.bio,
+      location: preview.location,
       targetBid: Math.max(MIN_NEW_SPOT_CENTS / 100, bid),
     });
     if (!result.ok) {

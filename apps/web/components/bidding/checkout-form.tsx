@@ -66,6 +66,9 @@ export function CheckoutForm({
       name: preview.fullName || undefined,
       headline: preview.headline || undefined,
       skills: preview.skills.join(", ") || undefined,
+      imageUrl: preview.imageUrl,
+      bio: preview.bio,
+      location: preview.location,
       targetBid,
     });
     if (!result.ok) {

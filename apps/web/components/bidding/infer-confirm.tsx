@@ -5,6 +5,9 @@ export type InferredPreview = {
   headline: string;
   categorySlug: string;
   skills: string[];
+  imageUrl?: string;
+  bio?: string;
+  location?: string;
 };
 
 export function InferConfirm({ status }: { status: "idle" | "loading" | "ready" | "error" }) {

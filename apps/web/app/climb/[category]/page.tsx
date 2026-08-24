@@ -1,10 +1,13 @@
-import { getLeaderboard, getClimbCategory, isCategorySlug } from "@climb/db";
+import { getClimbCategory, isCategorySlug } from "@climb/db";
 import { LeaderboardList } from "@/components/leaderboard/leaderboard-list";
 import { parseBoardSearch } from "@/lib/climb-url";
+import { listLeaderboard } from "@/services/leaderboard.service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import ClimbListLoading from "../loading";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 20;
 
 type Props = {
   params: Promise<{ category: string }>;
@@ -26,17 +29,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ClimbCategoryPage({ params, searchParams }: Props) {
+async function CategoryBoard({ params, searchParams }: Props) {
   const { category: slug } = await params;
   if (!isCategorySlug(slug)) notFound();
   const category = getClimbCategory(slug);
   if (!category) notFound();
 
   const { q, page } = parseBoardSearch(await searchParams);
-  const board = await getLeaderboard({ categorySlug: slug, q: q || undefined, page });
+  const board = await listLeaderboard({ categorySlug: slug, q: q || undefined, page });
 
   return (
-    <div className="mt-6">
+    <>
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <h2 className="text-sm font-medium text-muted-foreground">{category.headline}</h2>
       </div>
@@ -48,6 +51,16 @@ export default async function ClimbCategoryPage({ params, searchParams }: Props)
         q={q}
         categorySlug={slug}
       />
+    </>
+  );
+}
+
+export default function ClimbCategoryPage(props: Props) {
+  return (
+    <div className="mt-6">
+      <Suspense fallback={<ClimbListLoading />}>
+        <CategoryBoard {...props} />
+      </Suspense>
     </div>
   );
 }

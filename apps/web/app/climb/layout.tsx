@@ -1,31 +1,48 @@
-import { getCategories, getLeaderboard, getSiteStats } from "@climb/db";
+import { CATEGORIES } from "@climb/db";
+import { Suspense } from "react";
 import { ClaimWidget } from "@/components/bidding/claim-widget";
 import { WhyClimb } from "@/components/home/why-climb";
 import { CategoryChips } from "@/components/leaderboard/category-chips";
 import { FindRank } from "@/components/leaderboard/find-rank";
+import { getCachedBoardHero } from "@/services/leaderboard.service";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 20;
 
-export default async function ClimbLayout({ children }: LayoutProps<"/climb">) {
-  const [categories, topBoard, stats] = await Promise.all([
-    getCategories(),
-    getLeaderboard({ page: 1, pageSize: 1 }),
-    getSiteStats(),
-  ]);
-  const claimTop = topBoard.people[0];
+const chipCategories = CATEGORIES.map((category) => ({ slug: category.slug, name: category.name }));
 
+function ClimbHeroFallback() {
+  return (
+    <div className="mx-auto max-w-4xl px-4 text-center sm:px-6" aria-hidden>
+      <div className="mx-auto h-6 w-56 animate-pulse rounded-full bg-muted" />
+      <div className="mx-auto mt-4 h-10 w-72 max-w-full animate-pulse rounded-md bg-muted" />
+      <div className="mx-auto mt-3 h-5 w-64 max-w-full animate-pulse rounded-md bg-muted" />
+      <div className="mx-auto mt-6 h-11 w-full max-w-xl animate-pulse rounded-[var(--radius)] bg-muted" />
+    </div>
+  );
+}
+
+async function ClimbHero() {
+  const hero = await getCachedBoardHero();
+  return (
+    <ClaimWidget
+      topBid={hero.topBid}
+      topName={hero.topName}
+      peopleCount={hero.people}
+      visitors={hero.visitors}
+      categories={chipCategories}
+    />
+  );
+}
+
+export default function ClimbLayout({ children }: LayoutProps<"/climb">) {
   return (
     <main id="main" className="pt-8 pb-10 sm:pt-10">
-      <ClaimWidget
-        topBid={claimTop?.currentBid ?? null}
-        topName={claimTop?.fullName ?? null}
-        peopleCount={stats.people}
-        visitors={stats.visitors}
-        categories={categories.map((category) => ({ slug: category.slug, name: category.name }))}
-      />
+      <Suspense fallback={<ClimbHeroFallback />}>
+        <ClimbHero />
+      </Suspense>
       <WhyClimb />
       <div className="mt-8 min-w-0">
-        <CategoryChips categories={categories} />
+        <CategoryChips categories={chipCategories} />
       </div>
       <div className="mt-4">
         <FindRank />

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       page,
     });
     if (!q) {
-      await trackEvent(category ? "category_view" : "leaderboard_view", { category });
+      void trackEvent(category ? "category_view" : "leaderboard_view", { category });
     }
     return Response.json(board);
   } catch (error) {

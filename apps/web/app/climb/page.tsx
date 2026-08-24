@@ -1,10 +1,12 @@
-import { getLeaderboard } from "@climb/db";
 import { LeaderboardList } from "@/components/leaderboard/leaderboard-list";
-import { PaidRankBanner } from "@/components/people/paid-rank-banner";
+import { PaidSuccessConfetti } from "@/components/people/paid-success-confetti";
 import { parseBoardSearch } from "@/lib/climb-url";
+import { listLeaderboard } from "@/services/leaderboard.service";
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import ClimbListLoading from "./loading";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 20;
 
 type Props = {
   searchParams: Promise<{ q?: string; page?: string; paid?: string }>;
@@ -16,26 +18,37 @@ export const metadata: Metadata = {
   alternates: { canonical: "/climb" },
 };
 
-export default async function ClimbPage({ searchParams }: Props) {
+async function PaidIsland({ searchParams }: Props) {
+  const params = await searchParams;
+  if (params.paid !== "1") return null;
+  return <PaidSuccessConfetti />;
+}
+
+async function ClimbBoard({ searchParams }: Props) {
   const params = await searchParams;
   const { q, page } = parseBoardSearch(params);
-  const paid = params.paid === "1";
-  const board = await getLeaderboard({ q: q || undefined, page });
+  const board = await listLeaderboard({ q: q || undefined, page });
 
   return (
+    <LeaderboardList
+      people={board.people}
+      total={board.total}
+      page={board.page}
+      pageSize={board.pageSize}
+      q={q}
+    />
+  );
+}
+
+export default function ClimbPage({ searchParams }: Props) {
+  return (
     <div className="mt-6">
-      {paid ? (
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <PaidRankBanner rank={0} />
-        </div>
-      ) : null}
-      <LeaderboardList
-        people={board.people}
-        total={board.total}
-        page={board.page}
-        pageSize={board.pageSize}
-        q={q}
-      />
+      <Suspense fallback={null}>
+        <PaidIsland searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={<ClimbListLoading />}>
+        <ClimbBoard searchParams={searchParams} />
+      </Suspense>
     </div>
   );
 }

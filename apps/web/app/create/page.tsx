@@ -1,4 +1,4 @@
-import { getCategories } from "@climb/db";
+import { CATEGORIES } from "@climb/db";
 import { CheckoutForm } from "@/components/bidding/checkout-form";
 import type { Metadata } from "next";
 
@@ -13,7 +13,7 @@ type Props = {
 
 export default async function CreatePage({ searchParams }: Props) {
   const params = await searchParams;
-  const categories = await getCategories();
+  const categories = CATEGORIES.map((category) => ({ slug: category.slug, name: category.name }));
 
   return (
     <main id="main" className="mx-auto w-full max-w-xl px-4 pb-16 sm:px-6">
@@ -27,7 +27,7 @@ export default async function CreatePage({ searchParams }: Props) {
         category={params.category ?? ""}
         bid={params.bid ?? ""}
         canceled={params.canceled === "1"}
-        categories={categories.map((category) => ({ slug: category.slug, name: category.name }))}
+        categories={categories}
       />
     </main>
   );

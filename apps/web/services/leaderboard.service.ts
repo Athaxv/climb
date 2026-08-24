@@ -1,8 +1,21 @@
-import { getLeaderboard, getPersonByUsername, getLatestActivity, getProfilesAroundRank } from "@climb/db";
-import { LEADERBOARD_CACHE_TTL_SECONDS, leaderboardCacheKey, profileCacheKey } from "@climb/ranking";
+import {
+  getBoardHero,
+  getLeaderboard,
+  getPersonByUsername,
+  getLatestActivity,
+  getProfilesAroundRank,
+} from "@climb/db";
+import {
+  BOARD_HERO_CACHE_KEY,
+  LEADERBOARD_CACHE_TTL_SECONDS,
+  LEADERBOARD_PAGE_SIZE,
+  leaderboardCacheKey,
+  profileCacheKey,
+} from "@climb/ranking";
 import { cacheGetJson, cacheSetJson } from "@/lib/redis";
 
 type Board = Awaited<ReturnType<typeof getLeaderboard>>;
+type Hero = Awaited<ReturnType<typeof getBoardHero>>;
 
 export async function listLeaderboard(options?: {
   categorySlug?: string;
@@ -10,19 +23,29 @@ export async function listLeaderboard(options?: {
   page?: number;
   pageSize?: number;
   take?: number;
+  snapshots?: boolean;
 }) {
   const searching = Boolean(options?.q && options.q.trim().length >= 2);
-  const page = options?.page ?? 1;
-  if (searching || page > 1) {
-    return getLeaderboard(options);
+  const page = Math.max(1, options?.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? options?.take ?? LEADERBOARD_PAGE_SIZE));
+  if (searching || options?.snapshots) {
+    return getLeaderboard({ ...options, page, pageSize });
   }
 
-  const key = leaderboardCacheKey(options?.categorySlug);
+  const key = leaderboardCacheKey(options?.categorySlug, page, pageSize);
   const cached = await cacheGetJson<Board>(key);
   if (cached) return cached;
-  const result = await getLeaderboard(options);
+  const result = await getLeaderboard({ ...options, page, pageSize });
   await cacheSetJson(key, result, LEADERBOARD_CACHE_TTL_SECONDS);
   return result;
+}
+
+export async function getCachedBoardHero() {
+  const cached = await cacheGetJson<Hero>(BOARD_HERO_CACHE_KEY);
+  if (cached) return cached;
+  const hero = await getBoardHero();
+  await cacheSetJson(BOARD_HERO_CACHE_KEY, hero, LEADERBOARD_CACHE_TTL_SECONDS);
+  return hero;
 }
 
 export async function getCachedProfile(username: string) {

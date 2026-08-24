@@ -40,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
       </head>
-      <body className="min-h-full bg-background font-sans text-foreground antialiased">
+      <body className="flex min-h-full flex-col bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
           <ClaimIntentProvider>
             <a
@@ -50,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Skip to leaderboard
             </a>
             <SiteHeader />
-            {children}
+            <div className="flex-1">{children}</div>
             <SiteFooter />
           </ClaimIntentProvider>
         </ThemeProvider>

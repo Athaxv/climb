@@ -1,18 +1,19 @@
-import { cookies, headers } from "next/headers";
-import { getPersonByUsername } from "@climb/db";
+import { cache } from "react";
+import { after } from "next/server";
+import { headers } from "next/headers";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
 import { PaidRankBanner } from "@/components/people/paid-rank-banner";
-import { PersonAvatar } from "@/components/people/person-card";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { ShareRankButton } from "@/components/people/share-rank-button";
 import { ChallengePositionButton } from "@/components/bidding/challenge-position-button";
 import { trackEvent } from "@/lib/analytics";
-import { SESSION_COOKIE, readSession } from "@/lib/auth/session";
+import { getCachedProfile } from "@/services/leaderboard.service";
 import { recordProfileView } from "@/services/profile.service";
 import { BadgeCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+const loadPerson = cache((username: string) => getCachedProfile(username));
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -30,7 +31,7 @@ const LINK_LABELS: Record<string, string> = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const person = await getPersonByUsername(username);
+  const person = await loadPerson(username);
   if (!person) return { title: "Profile" };
   return {
     title: `${person.fullName} — #${person.rank} ${person.category.name}`,
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${person.fullName} is #${person.rank} on Climb`,
       description: person.headline,
+      ...(person.imageUrl ? { images: [{ url: person.imageUrl }] } : {}),
     },
   };
 }
@@ -45,28 +47,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProfilePage({ params, searchParams }: Props) {
   const { username } = await params;
   const query = await searchParams;
-  const person = await getPersonByUsername(username);
+  const person = await loadPerson(username);
   if (!person) notFound();
 
   const headerList = await headers();
   const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const userAgent = headerList.get("user-agent") || "unknown";
-  await recordProfileView(person.id, ip, userAgent);
-  await trackEvent("profile_view", { username });
+  after(() => {
+    void recordProfileView(person.id, ip, userAgent);
+    void trackEvent("profile_view", { username });
+  });
 
   const minToTakeCents = calculateMinimumBidCents(Math.max(person.currentBid, 0));
   const minToTakeDollars = minToTakeCents / 100;
-  const jar = await cookies();
-  const session = await readSession(jar.get(SESSION_COOKIE)?.value);
   const paidRank = query.paid === "1" ? person.rank : null;
-  void session;
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
       {paidRank != null ? <PaidRankBanner rank={paidRank} /> : null}
       <p className="text-sm font-medium text-primary">{person.rank > 0 ? `#${person.rank}` : "Unlisted"}</p>
       <div className="mt-4 flex items-start gap-4">
-        <PersonAvatar name={person.fullName} username={person.username} className="size-16 text-lg" />
+        <PersonAvatar
+          name={person.fullName}
+          username={person.username}
+          imageUrl={person.imageUrl}
+          className="size-16 text-lg"
+          priority
+        />
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
             {person.fullName}

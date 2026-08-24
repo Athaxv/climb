@@ -152,8 +152,9 @@ describe("successful bid application", () => {
 describe("cache keys", () => {
   it("invalidates global, category, and profile keys", () => {
     expect(cacheKeysForBid("maya-chen", "ai-data")).toEqual([
-      "leaderboard:global",
-      "leaderboard:category:ai-data",
+      "leaderboard:global:p1:s25",
+      "leaderboard:category:ai-data:p1:s25",
+      "leaderboard:hero",
       "profile:maya-chen",
     ]);
   });

@@ -138,8 +138,15 @@ export function minBidToTakeRank(occupantBid: MoneyInput): string {
   return calculateMinimumBid(occupantBid);
 }
 
-export function leaderboardCacheKey(categorySlug?: string | null) {
-  return categorySlug ? `leaderboard:category:${categorySlug}` : "leaderboard:global";
+export const BOARD_HERO_CACHE_KEY = "leaderboard:hero";
+
+export function leaderboardCacheKey(
+  categorySlug?: string | null,
+  page = 1,
+  pageSize = LEADERBOARD_PAGE_SIZE,
+) {
+  const base = categorySlug ? `leaderboard:category:${categorySlug}` : "leaderboard:global";
+  return `${base}:p${page}:s${pageSize}`;
 }
 
 export function profileCacheKey(username: string) {
@@ -147,7 +154,13 @@ export function profileCacheKey(username: string) {
 }
 
 export function cacheKeysForBid(username: string, categorySlug?: string | null) {
-  return ["leaderboard:global", leaderboardCacheKey(categorySlug), profileCacheKey(username)];
+  const keys = [
+    leaderboardCacheKey(null),
+    BOARD_HERO_CACHE_KEY,
+    profileCacheKey(username),
+  ];
+  if (categorySlug) keys.splice(1, 0, leaderboardCacheKey(categorySlug));
+  return keys;
 }
 
 export type TrendingInputs = {

@@ -1,4 +1,4 @@
-import { Prisma, prisma } from "@climb/db";
+import { Prisma, prisma, getProfileRank } from "@climb/db";
 import { decideSuccessfulBid } from "@climb/ranking";
 import {
   checkoutLooksFailed,
@@ -14,6 +14,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { AppError, appUrl } from "@/lib/http";
 import { invalidateListingCache } from "@/services/listing-cache";
+import { planCloneLinkMoves, planListingMerge } from "@/services/listing-merge-core";
 
 type ApplyResult = {
   duplicate?: boolean;
@@ -168,17 +169,15 @@ export async function createProviderCheckout(input: {
       chargeAmountCents: input.chargeAmountCents,
       status: "PENDING",
       identityInput: input.identity,
-    },
-  });
-
-  await prisma.payment.create({
-    data: {
-      personId: input.person.id,
-      bidId: bid.id,
-      amount: input.chargeAmountCents,
-      currency: "usd",
-      provider: "DODO",
-      status: "PENDING",
+      payment: {
+        create: {
+          personId: input.person.id,
+          amount: input.chargeAmountCents,
+          currency: "usd",
+          provider: "DODO",
+          status: "PENDING",
+        },
+      },
     },
   });
 
@@ -197,16 +196,18 @@ export async function createProviderCheckout(input: {
       },
     });
 
-    await prisma.bid.update({
-      where: { id: bid.id },
-      data: { providerCheckoutId: checkout.checkoutId },
-    });
-    await prisma.payment.update({
-      where: { bidId: bid.id },
-      data: { providerCheckoutId: checkout.checkoutId },
-    });
+    await prisma.$transaction([
+      prisma.bid.update({
+        where: { id: bid.id },
+        data: { providerCheckoutId: checkout.checkoutId },
+      }),
+      prisma.payment.update({
+        where: { bidId: bid.id },
+        data: { providerCheckoutId: checkout.checkoutId },
+      }),
+    ]);
 
-    await trackEvent("checkout_created", {
+    void trackEvent("checkout_created", {
       bidId: bid.id,
       username: input.person.username,
       chargeAmountCents: input.chargeAmountCents,
@@ -221,14 +222,16 @@ export async function createProviderCheckout(input: {
     };
   } catch (error) {
     console.error(error);
-    await prisma.bid.update({
-      where: { id: bid.id },
-      data: { status: "FAILED" },
-    });
-    await prisma.payment.update({
-      where: { bidId: bid.id },
-      data: { status: "FAILED" },
-    });
+    await prisma.$transaction([
+      prisma.bid.update({
+        where: { id: bid.id },
+        data: { status: "FAILED" },
+      }),
+      prisma.payment.update({
+        where: { bidId: bid.id },
+        data: { status: "FAILED" },
+      }),
+    ]);
     const detail = error instanceof Error ? error.message : "";
     if (/401|Unauthorized/i.test(detail)) {
       throw new AppError(
@@ -239,31 +242,6 @@ export async function createProviderCheckout(input: {
     }
     throw new AppError("checkout_failed", "Could not start checkout.", 502);
   }
-}
-
-async function rankInTransaction(
-  tx: Prisma.TransactionClient,
-  person: { id: string; currentBid: number; currentBidAt: Date },
-) {
-  if (person.currentBid <= 0) return 0;
-  const ahead = await tx.person.count({
-    where: {
-      currentBid: { gt: 0 },
-      OR: [
-        { currentBid: { gt: person.currentBid } },
-        {
-          currentBid: person.currentBid,
-          currentBidAt: { lt: person.currentBidAt },
-        },
-        {
-          currentBid: person.currentBid,
-          currentBidAt: person.currentBidAt,
-          id: { lt: person.id },
-        },
-      ],
-    },
-  });
-  return ahead + 1;
 }
 
 async function loadBid(tx: Prisma.TransactionClient, event: PaymentEvent) {
@@ -307,7 +285,7 @@ export async function handlePaymentEvent(event: PaymentEvent): Promise<ApplyResu
         }
         return claimed.result;
       },
-      { maxWait: 10_000, timeout: 20_000 },
+      { maxWait: 5_000, timeout: 8_000 },
     );
 
   try {
@@ -330,9 +308,31 @@ export async function handlePaymentEvent(event: PaymentEvent): Promise<ApplyResu
   }
 
   if (result.applied && result.username && result.personId && result.kind && result.amount != null) {
+    try {
+      const rank = await getProfileRank(result.personId);
+      await prisma.$transaction([
+        prisma.activity.create({
+          data: {
+            personId: result.personId,
+            type: result.kind === "joined" ? "JOINED" : "RAISED",
+            amount: result.amount,
+            rank,
+          },
+        }),
+        prisma.rankSnapshot.create({
+          data: {
+            personId: result.personId,
+            rank,
+            bid: result.amount,
+          },
+        }),
+      ]);
+    } catch (error) {
+      console.error(error);
+    }
     await invalidateListingCache(result.username, result.categorySlug);
-    await trackEvent("payment_success", { bidId: event.metadata.bidId, username: result.username });
-    await trackEvent("rank_changed", { username: result.username });
+    void trackEvent("payment_success", { bidId: event.metadata.bidId, username: result.username });
+    void trackEvent("rank_changed", { username: result.username });
   }
 
   return result;
@@ -431,19 +431,81 @@ async function fulfillClaimedEvent(
     return { refund: true, username: person.username, bidId: bid.id };
   }
 
-  const now = new Date();
-  const updated = await tx.person.update({
-    where: { id: person.id },
-    data: {
-      currentBid: plan.newBidCents,
-      currentBidAt: now,
-    },
+  const owned =
+    user != null
+      ? await tx.person.findUnique({
+          where: { userId: user.id },
+          include: { category: true, socialLinks: true },
+        })
+      : null;
+
+  let target = person;
+  let appliedBidCents = plan.newBidCents;
+  let kind = plan.kind;
+  let cloneId: string | null = null;
+
+  if (owned && owned.id !== person.id) {
+    await tx.$executeRaw`SELECT id FROM "Person" WHERE id = ${owned.id} FOR UPDATE`;
+    const merge = planListingMerge({
+      owner: { id: owned.id, currentBid: owned.currentBid },
+      clone: { id: person.id, currentBid: person.currentBid },
+      newBidCents: plan.newBidCents,
+    });
+    const cloneLinks = await tx.socialLink.findMany({ where: { personId: person.id } });
+    const moves = planCloneLinkMoves({
+      ownerLinks: owned.socialLinks,
+      cloneLinks,
+    });
+    for (const move of moves) {
+      if (move.action === "drop") {
+        await tx.socialLink.delete({ where: { id: move.linkId } });
+      } else {
+        await tx.socialLink.update({
+          where: { id: move.linkId },
+          data: { personId: owned.id },
+        });
+      }
+    }
+    const cloneSkills = await tx.personSkill.findMany({ where: { personId: person.id } });
+    for (const row of cloneSkills) {
+      await tx.personSkill.upsert({
+        where: { personId_skillId: { personId: owned.id, skillId: row.skillId } },
+        create: { personId: owned.id, skillId: row.skillId },
+        update: {},
+      });
+    }
+    await tx.bid.updateMany({ where: { personId: person.id }, data: { personId: owned.id } });
+    await tx.payment.updateMany({ where: { personId: person.id }, data: { personId: owned.id } });
+    target = owned;
+    appliedBidCents = merge.appliedBidCents;
+    kind = merge.kind;
+    cloneId = merge.deleteClone ? person.id : null;
+    if (merge.shouldUpdateBid) {
+      await tx.person.update({
+        where: { id: owned.id },
+        data: { currentBid: appliedBidCents, currentBidAt: new Date() },
+      });
+    }
+  } else {
+    await tx.person.update({
+      where: { id: person.id },
+      data: {
+        currentBid: plan.newBidCents,
+        currentBidAt: new Date(),
+      },
+    });
+  }
+
+  const updated = await tx.person.findUniqueOrThrow({
+    where: { id: target.id },
+    include: { category: true },
   });
 
   await tx.bid.update({
     where: { id: bid.id },
     data: {
       userId: user?.id ?? bid.userId,
+      personId: target.id,
       status: "COMPLETED",
       ...checkoutPatch,
     },
@@ -451,6 +513,7 @@ async function fulfillClaimedEvent(
   await tx.payment.update({
     where: { bidId: bid.id },
     data: {
+      personId: target.id,
       status: "SUCCEEDED",
       providerPaymentId: paymentId,
       ...checkoutPatch,
@@ -458,10 +521,10 @@ async function fulfillClaimedEvent(
     },
   });
 
-  if (!person.userId && user) {
+  if (!updated.userId && user) {
     try {
       await tx.person.update({
-        where: { id: person.id },
+        where: { id: updated.id },
         data: { userId: user.id },
       });
     } catch {
@@ -469,31 +532,18 @@ async function fulfillClaimedEvent(
     }
   }
 
-  const rank = await rankInTransaction(tx, updated);
-  await tx.activity.create({
-    data: {
-      personId: person.id,
-      type: plan.kind === "joined" ? "JOINED" : "RAISED",
-      amount: plan.newBidCents,
-      rank,
-    },
-  });
-  await tx.rankSnapshot.create({
-    data: {
-      personId: person.id,
-      rank,
-      bid: plan.newBidCents,
-    },
-  });
+  if (cloneId) {
+    await tx.person.delete({ where: { id: cloneId } });
+  }
 
   return {
     applied: true,
     refund: false,
-    username: person.username,
-    personId: person.id,
-    kind: plan.kind,
-    amount: plan.newBidCents,
-    categorySlug: person.category.slug,
+    username: updated.username,
+    personId: updated.id,
+    kind,
+    amount: appliedBidCents,
+    categorySlug: updated.category.slug,
     bidId: bid.id,
   };
 }

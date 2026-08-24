@@ -21,8 +21,14 @@ export async function GET(request: Request) {
   }
 
   const location = outcome === "paid" ? paidClimb : climb;
+  const normalizedEmail = email?.trim().toLowerCase();
+  const user = normalizedEmail
+    ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
+    : null;
   const person = username ? await prisma.person.findUnique({ where: { username } }) : null;
-  const token = email ? await signSession({ userId: person?.userId || "guest", email }) : null;
+  const token = normalizedEmail
+    ? await signSession({ userId: user?.id || person?.userId || "guest", email: normalizedEmail })
+    : null;
   const headers = new Headers({ Location: location });
   if (token && outcome !== "failed") headers.append("Set-Cookie", sessionCookie(token));
   return new Response(null, { status: 303, headers });

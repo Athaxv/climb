@@ -1,3 +1,4 @@
+import { checkoutLooksFailed, checkoutLooksPaid } from "../../checkout-status";
 import { InvalidWebhookSignatureError, type PaymentEvent, type VerifyWebhookInput } from "../../types";
 import type { DodoSdkLike } from "./types";
 
@@ -26,41 +27,62 @@ function readAmountCents(data: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
+function looksLikePaymentObject(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.payment_id === "string" ||
+    value.payload_type === "Payment" ||
+    (typeof value.id === "string" && value.id.startsWith("pay_"))
+  );
+}
+
+function readPaymentId(data: Record<string, unknown>): string | undefined {
+  if (typeof data.payment_id === "string") return data.payment_id;
+  if (typeof data.id === "string" && data.id.startsWith("pay_")) return data.id;
+  return undefined;
+}
+
+function readCheckoutId(data: Record<string, unknown>, metadata: Record<string, string>): string | undefined {
+  if (typeof data.checkout_session_id === "string") return data.checkout_session_id;
+  if (typeof data.checkout_id === "string") return data.checkout_id;
+  if (typeof data.session_id === "string" && data.session_id.startsWith("cks_")) return data.session_id;
+  return metadata.checkoutId || metadata.checkout_session_id || undefined;
+}
+
+function mapWebhookType(type: string, data: Record<string, unknown>): PaymentEvent["type"] {
+  const normalized = type.toLowerCase();
+  if (normalized === "payment.succeeded") return "payment.succeeded";
+  if (normalized === "payment.failed") return "payment.failed";
+  if (normalized === "payment.cancelled" || normalized === "payment.canceled") return "payment.cancelled";
+  if (normalized) return "ignored";
+
+  const status = typeof data.status === "string" ? data.status : "";
+  if (!status) return "ignored";
+  if (looksLikePaymentObject(data) && checkoutLooksPaid(status) && !checkoutLooksFailed(status)) {
+    return "payment.succeeded";
+  }
+  if (looksLikePaymentObject(data) && checkoutLooksFailed(status)) {
+    return status.toLowerCase().includes("cancel") ? "payment.cancelled" : "payment.failed";
+  }
+  return "ignored";
+}
+
 export function mapDodoWebhookEvent(unwrapped: unknown, webhookId: string): PaymentEvent {
   const root = asRecord(unwrapped) ?? {};
-  const type = typeof root.type === "string" ? root.type : "unknown";
-  const data = asRecord(root.data) ?? {};
+  const type = typeof root.type === "string" ? root.type : "";
+  const nested = asRecord(root.data);
+  const data = nested ?? (looksLikePaymentObject(root) ? root : {});
   const customer = asRecord(data.customer) ?? asRecord(root.customer) ?? {};
   const metadata = {
     ...stringRecord(root.metadata),
     ...stringRecord(data.metadata),
   };
 
-  const paymentId =
-    typeof data.payment_id === "string"
-      ? data.payment_id
-      : typeof data.id === "string" && data.id.startsWith("pay_")
-        ? data.id
-        : undefined;
-
-  const checkoutId =
-    typeof data.checkout_session_id === "string"
-      ? data.checkout_session_id
-      : typeof data.session_id === "string"
-        ? data.session_id
-        : metadata.checkoutId;
-
-  const mappedType =
-    type === "payment.succeeded" || type === "payment.failed" || type === "payment.cancelled"
-      ? type
-      : ("ignored" as const);
-
   return {
-    type: mappedType,
+    type: mapWebhookType(type, data),
     eventId: webhookId,
-    paymentId,
-    checkoutId,
-    amountCents: readAmountCents(data),
+    paymentId: readPaymentId(data) ?? readPaymentId(root),
+    checkoutId: readCheckoutId(data, metadata) ?? readCheckoutId(root, metadata),
+    amountCents: readAmountCents(data) ?? readAmountCents(root),
     currency: typeof data.currency === "string" ? data.currency : undefined,
     customerEmail: typeof customer.email === "string" ? customer.email : undefined,
     customerName: typeof customer.name === "string" ? customer.name : undefined,

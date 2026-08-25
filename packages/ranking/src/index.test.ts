@@ -71,11 +71,11 @@ describe("minimum bid", () => {
 });
 
 describe("checkout quote", () => {
-  it("floors a new listing at $5", () => {
+  it("floors a new listing at $1", () => {
     expect(quoteCheckout({ currentBidCents: 0 })).toEqual({
       ok: true,
-      targetBidCents: 500,
-      chargeAmountCents: 500,
+      targetBidCents: 100,
+      chargeAmountCents: 100,
     });
   });
 
@@ -97,9 +97,9 @@ describe("checkout quote", () => {
 
 describe("successful bid application", () => {
   it("joins when the listing had no bid", () => {
-    expect(decideSuccessfulBid({ currentBidCents: 0, targetBidCents: 500 })).toEqual({
+    expect(decideSuccessfulBid({ currentBidCents: 0, targetBidCents: 100 })).toEqual({
       ok: true,
-      newBidCents: 500,
+      newBidCents: 100,
       kind: "joined",
     });
   });

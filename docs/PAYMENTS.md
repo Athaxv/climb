@@ -6,7 +6,7 @@ Climb talks to a provider-neutral `PaymentProvider`. Ranking, Prisma, and `BidSe
 
 - **Ranking** (`@climb/ranking`) only quotes and applies integer cents.
 - **Prisma** (`@climb/db`) stores provider-neutral ids (`providerCheckoutId`, `providerPaymentId`) and `ProviderWebhookEvent`.
-- **Orchestration** (`apps/web/services/payment.service.ts`) creates pending Bid/Payment rows, then calls the provider. Rank moves after a verified webhook, or when the return URL confirms the same Checkout Session with Dodo (`getCheckout`).
+- **Orchestration** (`apps/web/services/payment.service.ts`) creates pending Bid/Payment rows, then calls the provider. Rank moves after a verified webhook, or when the return URL confirms the same payment with Dodo (`getPayment` / `getCheckout`).
 - **Adapter** (`@climb/payments`) is the only package that depends on `dodopayments`.
 
 ## Dodo setup (test mode)
@@ -16,7 +16,7 @@ Climb talks to a provider-neutral `PaymentProvider`. Ranking, Prisma, and `BidSe
 3. Create **one** one-time product priced at **$1.00** (`100` cents) with `tax_category: digital_products`. Put its id in `DODO_BID_PRODUCT_ID` (`pdt_...`).
 4. Keep `DODO_PAYMENTS_ENVIRONMENT=test_mode` unless you are going live. The SDK defaults to live; Climb always passes `test_mode` unless this env is exactly `live_mode`.
 
-Climb charges are always whole dollars. Checkout builds `product_cart: [{ product_id, quantity: chargeAmountCents / 100 }]`. A $5 new listing is quantity `5`.
+Climb charges are always whole dollars. Checkout builds `product_cart: [{ product_id, quantity: chargeAmountCents / 100 }]`. A $1 new listing is quantity `1`.
 
 ## Environment
 
@@ -42,7 +42,7 @@ UI  →  POST /api/bids/checkout
     →  redirect session.checkout_url
 ```
 
-Anyone can pay to join or raise any profile URL. Climb does not collect email and does not check listing ownership. Dodo’s hosted checkout collects the payer email. First `payment.succeeded` may set `Person.userId` from that email for bookkeeping; later raises are still open.
+Anyone can pay to join or raise any profile URL. Climb does not collect email and does not check listing ownership. Dodo’s hosted checkout collects the payer email. First `payment.succeeded` may set that listing’s `Person.userId` from the email for bookkeeping. The same payer may have many listings; listings are never merged.
 
 ## Webhook
 
@@ -73,7 +73,7 @@ Duplicate webhook-id → 200 and retry refund if the bid is still REFUNDED.
 
 ## Local test
 
-Checkout return uses the origin of the tab that started Pay. After pay, Dodo redirects immediately (`redirect_immediately`). The return URL applies a pending bid if `getCheckout` shows the session is paid (heals a missed local webhook). Production should still send `payment.succeeded` to `/api/dodo/webhook`. Rank does not move from a bare `?paid=1` query.
+Checkout return uses the origin of the tab that started Pay. After pay, Dodo redirects immediately (`redirect_immediately`) to `return_url` with `payment_id` and `status` (not `session_id`). `/api/checkout/complete` retrieves that payment from Dodo, matches the Bid via `metadata.bidId` / `checkout_session_id`, and applies the pending bid if the payment succeeded. That heals a missed webhook. Production should still send `payment.succeeded` to `/api/dodo/webhook`. Rank does not move from a bare `?paid=1` query.
 
 1. Paste a real Test Mode webhook signing secret into `apps/web/.env` as `DODO_PAYMENTS_WEBHOOK_KEY`. Restart Next.
 2. In a second terminal, forward events to the port Next actually printed (this repo defaults to 3000):

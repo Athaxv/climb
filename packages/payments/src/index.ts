@@ -4,6 +4,13 @@ import type { PaymentProvider } from "./types";
 export type { BidDecision, BidLifecycleStatus, FulfillmentPlan } from "./fulfillment";
 export { amountsMatch, planFulfillment, quantityFromChargeCents, quotedChargeCentsFromMetadata } from "./fulfillment";
 export { checkoutLooksFailed, checkoutLooksPaid } from "./checkout-status";
+export {
+  parseCheckoutReturnQuery,
+  returnEventId,
+  shouldClaimPaymentEvent,
+  waitForSettledPaymentStatus,
+} from "./checkout-return";
+export type { CheckoutReturnQuery } from "./checkout-return";
 export { claimThenFulfill, runInMemoryTransaction } from "./idempotency";
 export {
   createDodoClient,
@@ -22,6 +29,7 @@ export type {
   PaymentEventType,
   PaymentProvider,
   RetrievedCheckout,
+  RetrievedPayment,
   VerifyWebhookInput,
 } from "./types";
 export { InvalidWebhookSignatureError, PaymentProviderError } from "./types";

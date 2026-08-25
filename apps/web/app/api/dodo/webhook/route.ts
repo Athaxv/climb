@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     await handlePaymentEvent(event);
     return Response.json({ received: true });
   } catch (error) {
+    console.error("[CLIMB][DODO] webhook fulfill failed", error);
     return jsonError(error);
   }
 }

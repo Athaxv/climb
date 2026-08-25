@@ -1,5 +1,6 @@
 import { checkoutIdFromSession, createDodoCheckout } from "./checkout";
 import { createDodoClient, isUsableDodoApiKey, isUsableDodoProductId, isUsableDodoWebhookKey, resolveDodoEnvironment } from "./client";
+import { mapDodoPayment } from "./payment";
 import { refundDodoPayment } from "./refunds";
 import type { DodoSdkLike } from "./types";
 import { stringRecord, unwrapDodoWebhook } from "./webhook";
@@ -7,6 +8,7 @@ import type {
   CreateCheckoutInput,
   PaymentProvider,
   RetrievedCheckout,
+  RetrievedPayment,
   VerifyWebhookInput,
 } from "../../types";
 
@@ -50,6 +52,12 @@ export function createDodoPaymentProvider(options: DodoPaymentProviderOptions = 
         customerEmail: session.customer_email ?? session.customer?.email ?? undefined,
         metadata: stringRecord(session.metadata),
       };
+    },
+    async getPayment(paymentId: string): Promise<RetrievedPayment> {
+      if (!client) {
+        throw new Error("Dodo client is not configured");
+      }
+      return mapDodoPayment(await client.payments.retrieve(paymentId));
     },
     async refund(paymentId: string) {
       if (!client) {

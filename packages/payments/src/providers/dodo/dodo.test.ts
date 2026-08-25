@@ -5,12 +5,16 @@ import type { DodoSdkLike } from "./types";
 
 function mockClient(overrides: Partial<DodoSdkLike> = {}): DodoSdkLike & {
   checkoutSessions: DodoSdkLike["checkoutSessions"] & { create: ReturnType<typeof vi.fn>; retrieve: ReturnType<typeof vi.fn> };
+  payments: DodoSdkLike["payments"] & { retrieve: ReturnType<typeof vi.fn> };
   webhooks: { unwrap: ReturnType<typeof vi.fn> };
   refunds: { create: ReturnType<typeof vi.fn> };
 } {
   return {
     checkoutSessions: {
       create: vi.fn(),
+      retrieve: vi.fn(),
+    },
+    payments: {
       retrieve: vi.fn(),
     },
     webhooks: {
@@ -184,6 +188,28 @@ describe("DodoPaymentProvider", () => {
       paymentId: "pay_0Nm6RtD0syTrmvjLRVjcs",
       customerEmail: "payer@example.com",
       metadata: {},
+    });
+  });
+
+  it("retrieves a payment by pay_ id including checkout session and bid metadata", async () => {
+    const client = mockClient();
+    client.payments.retrieve.mockResolvedValue({
+      payment_id: "pay_abc",
+      status: "succeeded",
+      total_amount: 100,
+      checkout_session_id: "cks_1",
+      customer: { email: "payer@example.com" },
+      metadata: { bidId: "bid_1", personId: "p_1", chargeAmountCents: "100" },
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+    await expect(provider.getPayment("pay_abc")).resolves.toEqual({
+      paymentId: "pay_abc",
+      paymentStatus: "succeeded",
+      checkoutId: "cks_1",
+      customerEmail: "payer@example.com",
+      customerName: undefined,
+      amountCents: 100,
+      metadata: { bidId: "bid_1", personId: "p_1", chargeAmountCents: "100" },
     });
   });
 });

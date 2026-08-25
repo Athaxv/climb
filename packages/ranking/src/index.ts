@@ -4,11 +4,29 @@ export type MoneyInput = string | number;
 export const MIN_INCREMENT_CENTS = 100;
 
 /** Floor for a brand-new listing. */
-export const MIN_NEW_SPOT_CENTS = 500;
+export const MIN_NEW_SPOT_CENTS = 100;
 
 export const LEADERBOARD_CACHE_TTL_SECONDS = 20;
 
 export const LEADERBOARD_PAGE_SIZE = 25;
+
+/** Public board membership. A SocialLink alone does not list a Person. */
+export function isLiveOnLeaderboard(currentBidCents: number): boolean {
+  return currentBidCents > 0;
+}
+
+/**
+ * A successfully completed listing payment must leave the Person on the public
+ * board at the paid target (or higher, if merged onto an already-listed owner).
+ */
+export function completedPaymentActivatesListing(input: {
+  bidStatus: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED" | "REFUNDED";
+  currentBidCents: number;
+  targetBidCents: number;
+}): boolean {
+  if (input.bidStatus !== "COMPLETED") return true;
+  return input.currentBidCents > 0 && input.currentBidCents >= input.targetBidCents;
+}
 
 export function moneyToCents(value: MoneyInput): number {
   if (typeof value === "number") {

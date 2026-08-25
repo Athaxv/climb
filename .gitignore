@@ -15,6 +15,9 @@ prisma/*.db-journal
 packages/db/src/generated/**/*.node
 packages/db/src/generated/**/*.wasm
 
+# Nested workspace files make pnpm ignore packages/* on Vercel
+apps/*/pnpm-workspace.yaml
+
 # Local dumps that must never ship
 /~
 apps/web/scripts

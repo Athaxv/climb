@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ClimbLogo } from "@/components/brand/climb-logo";
 
 const GITHUB_URL = "https://github.com/athaxv";
 const AVATAR_URL = "https://avatars.githubusercontent.com/athaxv?v=4&s=96";
@@ -26,7 +27,17 @@ export function SiteFooter() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-background to-transparent"
       />
-      <div className="relative z-10 flex justify-center px-4 pt-8 pb-2 sm:px-6">
+      <div className="relative z-10 mx-auto max-w-lg px-4 pt-8 text-center sm:px-6">
+        <ClimbLogo variant="mark" className="mx-auto mb-3 size-7" />
+        <h2 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
+          <span className="text-primary">Get discovered.</span>{" "}
+          <span className="text-foreground">No ads.</span>
+        </h2>
+        <p className="mt-2 text-balance text-sm leading-6 text-muted-foreground sm:text-base">
+          Highest bid plus real views puts you first.
+        </p>
+      </div>
+      <div className="relative z-10 flex justify-center px-4 pt-4 pb-2 sm:px-6">
         <a
           href={GITHUB_URL}
           target="_blank"

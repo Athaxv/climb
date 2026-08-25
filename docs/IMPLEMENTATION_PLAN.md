@@ -45,7 +45,7 @@ Client may send a requested target bid. The server calculates the real charge. T
 
 ## Ranking rules
 
-- New spots from `$5`. Beat a seat by `$1`.
+- New spots from `$1`. Beat a seat by `$1`.
 - `currentBid DESC`, `currentBidAt ASC`, `id ASC`.
 - Unpaid drafts (`currentBid = 0`) are omitted from public boards.
 

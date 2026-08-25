@@ -51,7 +51,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  person   Person?
+  people   Person[]
   bids     Bid[]
   payments Payment[]
 }
@@ -70,7 +70,7 @@ model Category {
 
 model Person {
   id           String    @id @default(cuid())
-  userId       String?   @unique
+  userId       String?
   username     String    @unique
   fullName     String
   headline     String
@@ -99,6 +99,7 @@ model Person {
   activities  Activity[]
 
   @@index([username])
+  @@index([userId])
   @@index([categoryId, currentBid(sort: Desc), currentBidAt(sort: Asc)])
   @@index([currentBid(sort: Desc), currentBidAt(sort: Asc), id(sort: Asc)])
   @@index([createdAt])

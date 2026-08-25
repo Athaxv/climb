@@ -2118,11 +2118,13 @@ export namespace Prisma {
    */
 
   export type UserCountOutputType = {
+    people: number
     bids: number
     payments: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    people?: boolean | UserCountOutputTypeCountPeopleArgs
     bids?: boolean | UserCountOutputTypeCountBidsArgs
     payments?: boolean | UserCountOutputTypeCountPaymentsArgs
   }
@@ -2136,6 +2138,13 @@ export namespace Prisma {
      * Select specific fields to fetch from the UserCountOutputType
      */
     select?: UserCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountPeopleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: PersonWhereInput
   }
 
   /**
@@ -2516,7 +2525,7 @@ export namespace Prisma {
     image?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    person?: boolean | User$personArgs<ExtArgs>
+    people?: boolean | User$peopleArgs<ExtArgs>
     bids?: boolean | User$bidsArgs<ExtArgs>
     payments?: boolean | User$paymentsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2551,7 +2560,7 @@ export namespace Prisma {
 
   export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "name" | "image" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    person?: boolean | User$personArgs<ExtArgs>
+    people?: boolean | User$peopleArgs<ExtArgs>
     bids?: boolean | User$bidsArgs<ExtArgs>
     payments?: boolean | User$paymentsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2562,7 +2571,7 @@ export namespace Prisma {
   export type $UserPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "User"
     objects: {
-      person: Prisma.$PersonPayload<ExtArgs> | null
+      people: Prisma.$PersonPayload<ExtArgs>[]
       bids: Prisma.$BidPayload<ExtArgs>[]
       payments: Prisma.$PaymentPayload<ExtArgs>[]
     }
@@ -2967,7 +2976,7 @@ export namespace Prisma {
    */
   export interface Prisma__UserClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    person<T extends User$personArgs<ExtArgs> = {}>(args?: Subset<T, User$personArgs<ExtArgs>>): Prisma__PersonClient<$Result.GetResult<Prisma.$PersonPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    people<T extends User$peopleArgs<ExtArgs> = {}>(args?: Subset<T, User$peopleArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PersonPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     bids<T extends User$bidsArgs<ExtArgs> = {}>(args?: Subset<T, User$bidsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BidPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     payments<T extends User$paymentsArgs<ExtArgs> = {}>(args?: Subset<T, User$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -3393,9 +3402,9 @@ export namespace Prisma {
   }
 
   /**
-   * User.person
+   * User.people
    */
-  export type User$personArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type User$peopleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
      * Select specific fields to fetch from the Person
      */
@@ -3409,6 +3418,11 @@ export namespace Prisma {
      */
     include?: PersonInclude<ExtArgs> | null
     where?: PersonWhereInput
+    orderBy?: PersonOrderByWithRelationInput | PersonOrderByWithRelationInput[]
+    cursor?: PersonWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: PersonScalarFieldEnum | PersonScalarFieldEnum[]
   }
 
   /**
@@ -18371,7 +18385,7 @@ export namespace Prisma {
     image?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
-    person?: XOR<PersonNullableScalarRelationFilter, PersonWhereInput> | null
+    people?: PersonListRelationFilter
     bids?: BidListRelationFilter
     payments?: PaymentListRelationFilter
   }
@@ -18383,7 +18397,7 @@ export namespace Prisma {
     image?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    person?: PersonOrderByWithRelationInput
+    people?: PersonOrderByRelationAggregateInput
     bids?: BidOrderByRelationAggregateInput
     payments?: PaymentOrderByRelationAggregateInput
   }
@@ -18398,7 +18412,7 @@ export namespace Prisma {
     image?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
-    person?: XOR<PersonNullableScalarRelationFilter, PersonWhereInput> | null
+    people?: PersonListRelationFilter
     bids?: BidListRelationFilter
     payments?: PaymentListRelationFilter
   }, "id" | "email">
@@ -18549,11 +18563,11 @@ export namespace Prisma {
 
   export type PersonWhereUniqueInput = Prisma.AtLeast<{
     id?: string
-    userId?: string
     username?: string
     AND?: PersonWhereInput | PersonWhereInput[]
     OR?: PersonWhereInput[]
     NOT?: PersonWhereInput | PersonWhereInput[]
+    userId?: StringNullableFilter<"Person"> | string | null
     fullName?: StringFilter<"Person"> | string
     headline?: StringFilter<"Person"> | string
     bio?: StringNullableFilter<"Person"> | string | null
@@ -18578,7 +18592,7 @@ export namespace Prisma {
     payments?: PaymentListRelationFilter
     linkClicks?: LinkClickListRelationFilter
     activities?: ActivityListRelationFilter
-  }, "id" | "userId" | "username">
+  }, "id" | "username">
 
   export type PersonOrderByWithAggregationInput = {
     id?: SortOrder
@@ -19301,7 +19315,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonCreateNestedOneWithoutUserInput
+    people?: PersonCreateNestedManyWithoutUserInput
     bids?: BidCreateNestedManyWithoutUserInput
     payments?: PaymentCreateNestedManyWithoutUserInput
   }
@@ -19313,7 +19327,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonUncheckedCreateNestedOneWithoutUserInput
+    people?: PersonUncheckedCreateNestedManyWithoutUserInput
     bids?: BidUncheckedCreateNestedManyWithoutUserInput
     payments?: PaymentUncheckedCreateNestedManyWithoutUserInput
   }
@@ -19325,7 +19339,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUpdateOneWithoutUserNestedInput
+    people?: PersonUpdateManyWithoutUserNestedInput
     bids?: BidUpdateManyWithoutUserNestedInput
     payments?: PaymentUpdateManyWithoutUserNestedInput
   }
@@ -19337,7 +19351,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUncheckedUpdateOneWithoutUserNestedInput
+    people?: PersonUncheckedUpdateManyWithoutUserNestedInput
     bids?: BidUncheckedUpdateManyWithoutUserNestedInput
     payments?: PaymentUncheckedUpdateManyWithoutUserNestedInput
   }
@@ -19445,7 +19459,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -19501,7 +19515,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -20305,9 +20319,10 @@ export namespace Prisma {
     not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
 
-  export type PersonNullableScalarRelationFilter = {
-    is?: PersonWhereInput | null
-    isNot?: PersonWhereInput | null
+  export type PersonListRelationFilter = {
+    every?: PersonWhereInput
+    some?: PersonWhereInput
+    none?: PersonWhereInput
   }
 
   export type BidListRelationFilter = {
@@ -20325,6 +20340,10 @@ export namespace Prisma {
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
+  }
+
+  export type PersonOrderByRelationAggregateInput = {
+    _count?: SortOrder
   }
 
   export type BidOrderByRelationAggregateInput = {
@@ -20421,16 +20440,6 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntFilter<$PrismaModel> | number
-  }
-
-  export type PersonListRelationFilter = {
-    every?: PersonWhereInput
-    some?: PersonWhereInput
-    none?: PersonWhereInput
-  }
-
-  export type PersonOrderByRelationAggregateInput = {
-    _count?: SortOrder
   }
 
   export type CategoryCountOrderByAggregateInput = {
@@ -21129,10 +21138,11 @@ export namespace Prisma {
     _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
-  export type PersonCreateNestedOneWithoutUserInput = {
-    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
-    connectOrCreate?: PersonCreateOrConnectWithoutUserInput
-    connect?: PersonWhereUniqueInput
+  export type PersonCreateNestedManyWithoutUserInput = {
+    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput> | PersonCreateWithoutUserInput[] | PersonUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: PersonCreateOrConnectWithoutUserInput | PersonCreateOrConnectWithoutUserInput[]
+    createMany?: PersonCreateManyUserInputEnvelope
+    connect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
   }
 
   export type BidCreateNestedManyWithoutUserInput = {
@@ -21149,10 +21159,11 @@ export namespace Prisma {
     connect?: PaymentWhereUniqueInput | PaymentWhereUniqueInput[]
   }
 
-  export type PersonUncheckedCreateNestedOneWithoutUserInput = {
-    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
-    connectOrCreate?: PersonCreateOrConnectWithoutUserInput
-    connect?: PersonWhereUniqueInput
+  export type PersonUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput> | PersonCreateWithoutUserInput[] | PersonUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: PersonCreateOrConnectWithoutUserInput | PersonCreateOrConnectWithoutUserInput[]
+    createMany?: PersonCreateManyUserInputEnvelope
+    connect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
   }
 
   export type BidUncheckedCreateNestedManyWithoutUserInput = {
@@ -21181,14 +21192,18 @@ export namespace Prisma {
     set?: Date | string
   }
 
-  export type PersonUpdateOneWithoutUserNestedInput = {
-    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
-    connectOrCreate?: PersonCreateOrConnectWithoutUserInput
-    upsert?: PersonUpsertWithoutUserInput
-    disconnect?: PersonWhereInput | boolean
-    delete?: PersonWhereInput | boolean
-    connect?: PersonWhereUniqueInput
-    update?: XOR<XOR<PersonUpdateToOneWithWhereWithoutUserInput, PersonUpdateWithoutUserInput>, PersonUncheckedUpdateWithoutUserInput>
+  export type PersonUpdateManyWithoutUserNestedInput = {
+    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput> | PersonCreateWithoutUserInput[] | PersonUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: PersonCreateOrConnectWithoutUserInput | PersonCreateOrConnectWithoutUserInput[]
+    upsert?: PersonUpsertWithWhereUniqueWithoutUserInput | PersonUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: PersonCreateManyUserInputEnvelope
+    set?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    disconnect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    delete?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    connect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    update?: PersonUpdateWithWhereUniqueWithoutUserInput | PersonUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: PersonUpdateManyWithWhereWithoutUserInput | PersonUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: PersonScalarWhereInput | PersonScalarWhereInput[]
   }
 
   export type BidUpdateManyWithoutUserNestedInput = {
@@ -21219,14 +21234,18 @@ export namespace Prisma {
     deleteMany?: PaymentScalarWhereInput | PaymentScalarWhereInput[]
   }
 
-  export type PersonUncheckedUpdateOneWithoutUserNestedInput = {
-    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
-    connectOrCreate?: PersonCreateOrConnectWithoutUserInput
-    upsert?: PersonUpsertWithoutUserInput
-    disconnect?: PersonWhereInput | boolean
-    delete?: PersonWhereInput | boolean
-    connect?: PersonWhereUniqueInput
-    update?: XOR<XOR<PersonUpdateToOneWithWhereWithoutUserInput, PersonUpdateWithoutUserInput>, PersonUncheckedUpdateWithoutUserInput>
+  export type PersonUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput> | PersonCreateWithoutUserInput[] | PersonUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: PersonCreateOrConnectWithoutUserInput | PersonCreateOrConnectWithoutUserInput[]
+    upsert?: PersonUpsertWithWhereUniqueWithoutUserInput | PersonUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: PersonCreateManyUserInputEnvelope
+    set?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    disconnect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    delete?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    connect?: PersonWhereUniqueInput | PersonWhereUniqueInput[]
+    update?: PersonUpdateWithWhereUniqueWithoutUserInput | PersonUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: PersonUpdateManyWithWhereWithoutUserInput | PersonUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: PersonScalarWhereInput | PersonScalarWhereInput[]
   }
 
   export type BidUncheckedUpdateManyWithoutUserNestedInput = {
@@ -21307,9 +21326,9 @@ export namespace Prisma {
     deleteMany?: PersonScalarWhereInput | PersonScalarWhereInput[]
   }
 
-  export type UserCreateNestedOneWithoutPersonInput = {
-    create?: XOR<UserCreateWithoutPersonInput, UserUncheckedCreateWithoutPersonInput>
-    connectOrCreate?: UserCreateOrConnectWithoutPersonInput
+  export type UserCreateNestedOneWithoutPeopleInput = {
+    create?: XOR<UserCreateWithoutPeopleInput, UserUncheckedCreateWithoutPeopleInput>
+    connectOrCreate?: UserCreateOrConnectWithoutPeopleInput
     connect?: UserWhereUniqueInput
   }
 
@@ -21435,14 +21454,14 @@ export namespace Prisma {
     set?: boolean
   }
 
-  export type UserUpdateOneWithoutPersonNestedInput = {
-    create?: XOR<UserCreateWithoutPersonInput, UserUncheckedCreateWithoutPersonInput>
-    connectOrCreate?: UserCreateOrConnectWithoutPersonInput
-    upsert?: UserUpsertWithoutPersonInput
+  export type UserUpdateOneWithoutPeopleNestedInput = {
+    create?: XOR<UserCreateWithoutPeopleInput, UserUncheckedCreateWithoutPeopleInput>
+    connectOrCreate?: UserCreateOrConnectWithoutPeopleInput
+    upsert?: UserUpsertWithoutPeopleInput
     disconnect?: UserWhereInput | boolean
     delete?: UserWhereInput | boolean
     connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutPersonInput, UserUpdateWithoutPersonInput>, UserUncheckedUpdateWithoutPersonInput>
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutPeopleInput, UserUpdateWithoutPeopleInput>, UserUncheckedUpdateWithoutPeopleInput>
   }
 
   export type CategoryUpdateOneRequiredWithoutPeopleNestedInput = {
@@ -22315,6 +22334,11 @@ export namespace Prisma {
     create: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
   }
 
+  export type PersonCreateManyUserInputEnvelope = {
+    data: PersonCreateManyUserInput | PersonCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type BidCreateWithoutUserInput = {
     id?: string
     targetBidCents: number
@@ -22387,69 +22411,43 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type PersonUpsertWithoutUserInput = {
+  export type PersonUpsertWithWhereUniqueWithoutUserInput = {
+    where: PersonWhereUniqueInput
     update: XOR<PersonUpdateWithoutUserInput, PersonUncheckedUpdateWithoutUserInput>
     create: XOR<PersonCreateWithoutUserInput, PersonUncheckedCreateWithoutUserInput>
-    where?: PersonWhereInput
   }
 
-  export type PersonUpdateToOneWithWhereWithoutUserInput = {
-    where?: PersonWhereInput
+  export type PersonUpdateWithWhereUniqueWithoutUserInput = {
+    where: PersonWhereUniqueInput
     data: XOR<PersonUpdateWithoutUserInput, PersonUncheckedUpdateWithoutUserInput>
   }
 
-  export type PersonUpdateWithoutUserInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    username?: StringFieldUpdateOperationsInput | string
-    fullName?: StringFieldUpdateOperationsInput | string
-    headline?: StringFieldUpdateOperationsInput | string
-    bio?: NullableStringFieldUpdateOperationsInput | string | null
-    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    profileUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    location?: NullableStringFieldUpdateOperationsInput | string | null
-    country?: NullableStringFieldUpdateOperationsInput | string | null
-    currentBid?: IntFieldUpdateOperationsInput | number
-    currentBidAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    totalViews?: IntFieldUpdateOperationsInput | number
-    verified?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
-    socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
-    personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
-    bids?: BidUpdateManyWithoutPersonNestedInput
-    views?: ProfileViewUpdateManyWithoutPersonNestedInput
-    snapshots?: RankSnapshotUpdateManyWithoutPersonNestedInput
-    payments?: PaymentUpdateManyWithoutPersonNestedInput
-    linkClicks?: LinkClickUpdateManyWithoutPersonNestedInput
-    activities?: ActivityUpdateManyWithoutPersonNestedInput
+  export type PersonUpdateManyWithWhereWithoutUserInput = {
+    where: PersonScalarWhereInput
+    data: XOR<PersonUpdateManyMutationInput, PersonUncheckedUpdateManyWithoutUserInput>
   }
 
-  export type PersonUncheckedUpdateWithoutUserInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    username?: StringFieldUpdateOperationsInput | string
-    fullName?: StringFieldUpdateOperationsInput | string
-    headline?: StringFieldUpdateOperationsInput | string
-    bio?: NullableStringFieldUpdateOperationsInput | string | null
-    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    profileUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    categoryId?: StringFieldUpdateOperationsInput | string
-    location?: NullableStringFieldUpdateOperationsInput | string | null
-    country?: NullableStringFieldUpdateOperationsInput | string | null
-    currentBid?: IntFieldUpdateOperationsInput | number
-    currentBidAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    totalViews?: IntFieldUpdateOperationsInput | number
-    verified?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    socialLinks?: SocialLinkUncheckedUpdateManyWithoutPersonNestedInput
-    personSkills?: PersonSkillUncheckedUpdateManyWithoutPersonNestedInput
-    bids?: BidUncheckedUpdateManyWithoutPersonNestedInput
-    views?: ProfileViewUncheckedUpdateManyWithoutPersonNestedInput
-    snapshots?: RankSnapshotUncheckedUpdateManyWithoutPersonNestedInput
-    payments?: PaymentUncheckedUpdateManyWithoutPersonNestedInput
-    linkClicks?: LinkClickUncheckedUpdateManyWithoutPersonNestedInput
-    activities?: ActivityUncheckedUpdateManyWithoutPersonNestedInput
+  export type PersonScalarWhereInput = {
+    AND?: PersonScalarWhereInput | PersonScalarWhereInput[]
+    OR?: PersonScalarWhereInput[]
+    NOT?: PersonScalarWhereInput | PersonScalarWhereInput[]
+    id?: StringFilter<"Person"> | string
+    userId?: StringNullableFilter<"Person"> | string | null
+    username?: StringFilter<"Person"> | string
+    fullName?: StringFilter<"Person"> | string
+    headline?: StringFilter<"Person"> | string
+    bio?: StringNullableFilter<"Person"> | string | null
+    imageUrl?: StringNullableFilter<"Person"> | string | null
+    profileUrl?: StringNullableFilter<"Person"> | string | null
+    categoryId?: StringFilter<"Person"> | string
+    location?: StringNullableFilter<"Person"> | string | null
+    country?: StringNullableFilter<"Person"> | string | null
+    currentBid?: IntFilter<"Person"> | number
+    currentBidAt?: DateTimeFilter<"Person"> | Date | string
+    totalViews?: IntFilter<"Person"> | number
+    verified?: BoolFilter<"Person"> | boolean
+    createdAt?: DateTimeFilter<"Person"> | Date | string
+    updatedAt?: DateTimeFilter<"Person"> | Date | string
   }
 
   export type BidUpsertWithWhereUniqueWithoutUserInput = {
@@ -22533,7 +22531,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
     bids?: BidCreateNestedManyWithoutPersonInput
@@ -22597,30 +22595,7 @@ export namespace Prisma {
     data: XOR<PersonUpdateManyMutationInput, PersonUncheckedUpdateManyWithoutCategoryInput>
   }
 
-  export type PersonScalarWhereInput = {
-    AND?: PersonScalarWhereInput | PersonScalarWhereInput[]
-    OR?: PersonScalarWhereInput[]
-    NOT?: PersonScalarWhereInput | PersonScalarWhereInput[]
-    id?: StringFilter<"Person"> | string
-    userId?: StringNullableFilter<"Person"> | string | null
-    username?: StringFilter<"Person"> | string
-    fullName?: StringFilter<"Person"> | string
-    headline?: StringFilter<"Person"> | string
-    bio?: StringNullableFilter<"Person"> | string | null
-    imageUrl?: StringNullableFilter<"Person"> | string | null
-    profileUrl?: StringNullableFilter<"Person"> | string | null
-    categoryId?: StringFilter<"Person"> | string
-    location?: StringNullableFilter<"Person"> | string | null
-    country?: StringNullableFilter<"Person"> | string | null
-    currentBid?: IntFilter<"Person"> | number
-    currentBidAt?: DateTimeFilter<"Person"> | Date | string
-    totalViews?: IntFilter<"Person"> | number
-    verified?: BoolFilter<"Person"> | boolean
-    createdAt?: DateTimeFilter<"Person"> | Date | string
-    updatedAt?: DateTimeFilter<"Person"> | Date | string
-  }
-
-  export type UserCreateWithoutPersonInput = {
+  export type UserCreateWithoutPeopleInput = {
     id?: string
     email: string
     name?: string | null
@@ -22631,7 +22606,7 @@ export namespace Prisma {
     payments?: PaymentCreateNestedManyWithoutUserInput
   }
 
-  export type UserUncheckedCreateWithoutPersonInput = {
+  export type UserUncheckedCreateWithoutPeopleInput = {
     id?: string
     email: string
     name?: string | null
@@ -22642,9 +22617,9 @@ export namespace Prisma {
     payments?: PaymentUncheckedCreateNestedManyWithoutUserInput
   }
 
-  export type UserCreateOrConnectWithoutPersonInput = {
+  export type UserCreateOrConnectWithoutPeopleInput = {
     where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutPersonInput, UserUncheckedCreateWithoutPersonInput>
+    create: XOR<UserCreateWithoutPeopleInput, UserUncheckedCreateWithoutPeopleInput>
   }
 
   export type CategoryCreateWithoutPeopleInput = {
@@ -22882,18 +22857,18 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type UserUpsertWithoutPersonInput = {
-    update: XOR<UserUpdateWithoutPersonInput, UserUncheckedUpdateWithoutPersonInput>
-    create: XOR<UserCreateWithoutPersonInput, UserUncheckedCreateWithoutPersonInput>
+  export type UserUpsertWithoutPeopleInput = {
+    update: XOR<UserUpdateWithoutPeopleInput, UserUncheckedUpdateWithoutPeopleInput>
+    create: XOR<UserCreateWithoutPeopleInput, UserUncheckedCreateWithoutPeopleInput>
     where?: UserWhereInput
   }
 
-  export type UserUpdateToOneWithWhereWithoutPersonInput = {
+  export type UserUpdateToOneWithWhereWithoutPeopleInput = {
     where?: UserWhereInput
-    data: XOR<UserUpdateWithoutPersonInput, UserUncheckedUpdateWithoutPersonInput>
+    data: XOR<UserUpdateWithoutPeopleInput, UserUncheckedUpdateWithoutPeopleInput>
   }
 
-  export type UserUpdateWithoutPersonInput = {
+  export type UserUpdateWithoutPeopleInput = {
     id?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
     name?: NullableStringFieldUpdateOperationsInput | string | null
@@ -22904,7 +22879,7 @@ export namespace Prisma {
     payments?: PaymentUpdateManyWithoutUserNestedInput
   }
 
-  export type UserUncheckedUpdateWithoutPersonInput = {
+  export type UserUncheckedUpdateWithoutPeopleInput = {
     id?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
     name?: NullableStringFieldUpdateOperationsInput | string | null
@@ -23150,7 +23125,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
     bids?: BidCreateNestedManyWithoutPersonInput
@@ -23244,7 +23219,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
     bids?: BidUpdateManyWithoutPersonNestedInput
@@ -23348,7 +23323,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     bids?: BidCreateNestedManyWithoutPersonInput
@@ -23435,7 +23410,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     bids?: BidUpdateManyWithoutPersonNestedInput
@@ -23512,7 +23487,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -23562,7 +23537,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonCreateNestedOneWithoutUserInput
+    people?: PersonCreateNestedManyWithoutUserInput
     payments?: PaymentCreateNestedManyWithoutUserInput
   }
 
@@ -23573,7 +23548,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonUncheckedCreateNestedOneWithoutUserInput
+    people?: PersonUncheckedCreateNestedManyWithoutUserInput
     payments?: PaymentUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -23642,7 +23617,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -23698,7 +23673,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUpdateOneWithoutUserNestedInput
+    people?: PersonUpdateManyWithoutUserNestedInput
     payments?: PaymentUpdateManyWithoutUserNestedInput
   }
 
@@ -23709,7 +23684,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUncheckedUpdateOneWithoutUserNestedInput
+    people?: PersonUncheckedUpdateManyWithoutUserNestedInput
     payments?: PaymentUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -23759,7 +23734,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonCreateNestedOneWithoutUserInput
+    people?: PersonCreateNestedManyWithoutUserInput
     bids?: BidCreateNestedManyWithoutUserInput
   }
 
@@ -23770,7 +23745,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    person?: PersonUncheckedCreateNestedOneWithoutUserInput
+    people?: PersonUncheckedCreateNestedManyWithoutUserInput
     bids?: BidUncheckedCreateNestedManyWithoutUserInput
   }
 
@@ -23795,7 +23770,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -23885,7 +23860,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUpdateOneWithoutUserNestedInput
+    people?: PersonUpdateManyWithoutUserNestedInput
     bids?: BidUpdateManyWithoutUserNestedInput
   }
 
@@ -23896,7 +23871,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    person?: PersonUncheckedUpdateOneWithoutUserNestedInput
+    people?: PersonUncheckedUpdateManyWithoutUserNestedInput
     bids?: BidUncheckedUpdateManyWithoutUserNestedInput
   }
 
@@ -23927,7 +23902,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -24016,7 +23991,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -24086,7 +24061,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -24140,7 +24115,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -24210,7 +24185,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -24264,7 +24239,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -24355,7 +24330,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -24436,7 +24411,7 @@ export namespace Prisma {
     verified?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
-    user?: UserCreateNestedOneWithoutPersonInput
+    user?: UserCreateNestedOneWithoutPeopleInput
     category: CategoryCreateNestedOneWithoutPeopleInput
     socialLinks?: SocialLinkCreateNestedManyWithoutPersonInput
     personSkills?: PersonSkillCreateNestedManyWithoutPersonInput
@@ -24506,7 +24481,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
@@ -24544,6 +24519,25 @@ export namespace Prisma {
     linkClicks?: LinkClickUncheckedUpdateManyWithoutPersonNestedInput
   }
 
+  export type PersonCreateManyUserInput = {
+    id?: string
+    username: string
+    fullName: string
+    headline: string
+    bio?: string | null
+    imageUrl?: string | null
+    profileUrl?: string | null
+    categoryId: string
+    location?: string | null
+    country?: string | null
+    currentBid?: number
+    currentBidAt?: Date | string
+    totalViews?: number
+    verified?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type BidCreateManyUserInput = {
     id?: string
     personId: string
@@ -24567,6 +24561,79 @@ export namespace Prisma {
     status?: $Enums.PaymentStatus
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type PersonUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    fullName?: StringFieldUpdateOperationsInput | string
+    headline?: StringFieldUpdateOperationsInput | string
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    profileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    location?: NullableStringFieldUpdateOperationsInput | string | null
+    country?: NullableStringFieldUpdateOperationsInput | string | null
+    currentBid?: IntFieldUpdateOperationsInput | number
+    currentBidAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    totalViews?: IntFieldUpdateOperationsInput | number
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    category?: CategoryUpdateOneRequiredWithoutPeopleNestedInput
+    socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
+    personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
+    bids?: BidUpdateManyWithoutPersonNestedInput
+    views?: ProfileViewUpdateManyWithoutPersonNestedInput
+    snapshots?: RankSnapshotUpdateManyWithoutPersonNestedInput
+    payments?: PaymentUpdateManyWithoutPersonNestedInput
+    linkClicks?: LinkClickUpdateManyWithoutPersonNestedInput
+    activities?: ActivityUpdateManyWithoutPersonNestedInput
+  }
+
+  export type PersonUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    fullName?: StringFieldUpdateOperationsInput | string
+    headline?: StringFieldUpdateOperationsInput | string
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    profileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: StringFieldUpdateOperationsInput | string
+    location?: NullableStringFieldUpdateOperationsInput | string | null
+    country?: NullableStringFieldUpdateOperationsInput | string | null
+    currentBid?: IntFieldUpdateOperationsInput | number
+    currentBidAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    totalViews?: IntFieldUpdateOperationsInput | number
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    socialLinks?: SocialLinkUncheckedUpdateManyWithoutPersonNestedInput
+    personSkills?: PersonSkillUncheckedUpdateManyWithoutPersonNestedInput
+    bids?: BidUncheckedUpdateManyWithoutPersonNestedInput
+    views?: ProfileViewUncheckedUpdateManyWithoutPersonNestedInput
+    snapshots?: RankSnapshotUncheckedUpdateManyWithoutPersonNestedInput
+    payments?: PaymentUncheckedUpdateManyWithoutPersonNestedInput
+    linkClicks?: LinkClickUncheckedUpdateManyWithoutPersonNestedInput
+    activities?: ActivityUncheckedUpdateManyWithoutPersonNestedInput
+  }
+
+  export type PersonUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    fullName?: StringFieldUpdateOperationsInput | string
+    headline?: StringFieldUpdateOperationsInput | string
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    profileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: StringFieldUpdateOperationsInput | string
+    location?: NullableStringFieldUpdateOperationsInput | string | null
+    country?: NullableStringFieldUpdateOperationsInput | string | null
+    currentBid?: IntFieldUpdateOperationsInput | number
+    currentBidAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    totalViews?: IntFieldUpdateOperationsInput | number
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BidUpdateWithoutUserInput = {
@@ -24681,7 +24748,7 @@ export namespace Prisma {
     verified?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    user?: UserUpdateOneWithoutPersonNestedInput
+    user?: UserUpdateOneWithoutPeopleNestedInput
     socialLinks?: SocialLinkUpdateManyWithoutPersonNestedInput
     personSkills?: PersonSkillUpdateManyWithoutPersonNestedInput
     bids?: BidUpdateManyWithoutPersonNestedInput

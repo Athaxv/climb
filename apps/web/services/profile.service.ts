@@ -1,12 +1,19 @@
 import { Prisma, prisma, parseSkillList } from "@climb/db";
 import { parseProfileUrl } from "@climb/ranking";
 import { AppError } from "@/lib/http";
-import {
-  planSocialLinkAttach,
-  usableOwnerUserId,
-  type SocialLinkPlan,
-} from "@/services/listing-merge-core";
 import { sanitizeHttpUrl } from "@/services/profile-infer-core";
+
+function climbLogUpsert(fields: {
+  personId: string;
+  socialLinkId?: string;
+  platform: string;
+  canonicalUrl: string;
+  currentBid: number;
+}) {
+  console.info(
+    `[CLIMB] upsertProfile personId=${fields.personId} socialLinkId=${fields.socialLinkId ?? ""} platform=${fields.platform} canonicalUrl=${fields.canonicalUrl} currentBid=${fields.currentBid}`,
+  );
+}
 
 function isUniqueViolation(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -52,24 +59,6 @@ async function fillMissingListingFields(
   });
 }
 
-async function applySocialLinkPlan(personId: string, plan: SocialLinkPlan) {
-  if (plan.action === "noop") return;
-  if (plan.action === "create") {
-    await prisma.socialLink.create({
-      data: {
-        personId,
-        type: plan.type as "GITHUB" | "LINKEDIN" | "TWITTER" | "WEBSITE",
-        url: plan.url,
-      },
-    });
-    return;
-  }
-  await prisma.socialLink.update({
-    where: { id: plan.linkId },
-    data: { url: plan.url },
-  });
-}
-
 export async function upsertProfile(input: {
   identity: string;
   category: string;
@@ -79,7 +68,6 @@ export async function upsertProfile(input: {
   imageUrl?: string;
   bio?: string;
   location?: string;
-  ownerUserId?: string;
 }) {
   const parsed = parseProfileUrl(input.identity);
   if (!parsed) {
@@ -105,29 +93,14 @@ export async function upsertProfile(input: {
   });
   if (existingLink) {
     await fillMissingListingFields(existingLink.person, media);
-    return { person: existingLink.person, created: false as const };
-  }
-
-  const ownerUserId = usableOwnerUserId(input.ownerUserId);
-  if (ownerUserId) {
-    const owned = await prisma.person.findUnique({
-      where: { userId: ownerUserId },
-      include: { category: true, socialLinks: true },
+    climbLogUpsert({
+      personId: existingLink.person.id,
+      socialLinkId: existingLink.id,
+      platform: parsed.type,
+      canonicalUrl: parsed.canonicalUrl,
+      currentBid: existingLink.person.currentBid,
     });
-    if (owned) {
-      const linkPlan = planSocialLinkAttach({
-        ownerLinks: owned.socialLinks,
-        incoming: { type: parsed.type, url: parsed.canonicalUrl },
-      });
-      await applySocialLinkPlan(owned.id, linkPlan);
-      await fillMissingListingFields(owned, media);
-      await attachSkills(owned.id, input.skills);
-      const person = await prisma.person.findUniqueOrThrow({
-        where: { id: owned.id },
-        include: { category: true },
-      });
-      return { person, created: false as const };
-    }
+    return { person: existingLink.person, created: false as const };
   }
 
   const username = await allocateUsername(parsed.username);
@@ -147,9 +120,16 @@ export async function upsertProfile(input: {
           create: { type: parsed.type, url: parsed.canonicalUrl },
         },
       },
-      include: { category: true },
+      include: { category: true, socialLinks: true },
     });
     await attachSkills(person.id, input.skills);
+    climbLogUpsert({
+      personId: person.id,
+      socialLinkId: person.socialLinks[0]?.id,
+      platform: parsed.type,
+      canonicalUrl: parsed.canonicalUrl,
+      currentBid: person.currentBid,
+    });
     return { person, created: true as const };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -159,6 +139,13 @@ export async function upsertProfile(input: {
     });
     if (raced) {
       await fillMissingListingFields(raced.person, media);
+      climbLogUpsert({
+        personId: raced.person.id,
+        socialLinkId: raced.id,
+        platform: parsed.type,
+        canonicalUrl: parsed.canonicalUrl,
+        currentBid: raced.person.currentBid,
+      });
       return { person: raced.person, created: false as const };
     }
     const retryUsername = await allocateUsername(parsed.username);
@@ -170,9 +157,16 @@ export async function upsertProfile(input: {
           create: { type: parsed.type, url: parsed.canonicalUrl },
         },
       },
-      include: { category: true },
+      include: { category: true, socialLinks: true },
     });
     await attachSkills(person.id, input.skills);
+    climbLogUpsert({
+      personId: person.id,
+      socialLinkId: person.socialLinks[0]?.id,
+      platform: parsed.type,
+      canonicalUrl: parsed.canonicalUrl,
+      currentBid: person.currentBid,
+    });
     return { person, created: true as const };
   }
 }

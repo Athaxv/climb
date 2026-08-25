@@ -27,7 +27,7 @@ Never store money as a float. Never trust `amount`, `rank`, or `currentBid` from
 
 Checkout quote (server):
 
-- New listing (`currentBid === 0`): minimum target is `$5` (`500` cents).
+- New listing (`currentBid === 0`): minimum target is `$1` (`100` cents).
 - Raise existing listing: minimum target is `currentBid + $1`.
 - Optional client `targetBid` is a **request**. If it is below the minimum, reject `bid_too_low`.
 - Charge is `targetBidCents - currentBid`. A new listing pays the full target.
@@ -41,9 +41,9 @@ Public browsing and checkout are unauthenticated. Climb does not collect email; 
 Same person on the board means the same **canonical profile URL** on `SocialLink` (`@@unique([type, url])`). Supported inputs are LinkedIn `/in/…`, GitHub, X/Twitter, and a personal website.
 
 - Paste a profile URL. `parseProfileUrl` yields platform + canonical URL (www, query, hash, and trailing slash stripped).
-- If that `SocialLink` exists, checkout uses that `Person` — anyone may pay to join or raise it.
-- Otherwise a `Person` is created (draft at `currentBid = 0` until paid) with public slug `Person.username` = `{platform}-{handle}` from the **first** URL (`github-octocat`, `linkedin-maya-chen`, `x-maya`) plus that `SocialLink`. `Bid.identityInput` stores the raw URL.
-- The first successful payment may set `Person.userId` from the Dodo payer email → `User`. That is bookkeeping, not a raise gate.
+- If that `SocialLink` exists, checkout uses **that** `Person`. If `currentBid > 0` (already on the board), the next bid must be at least `$1` more. If `currentBid === 0` (unpaid draft), the floor is `$1` on the same Person. Climb never creates a second Person for the same URL.
+- Otherwise a `Person` is created (draft at `currentBid = 0` until paid) with public slug `Person.username` = `{platform}-{handle}` (`github-octocat`, `linkedin-maya-chen`, `x-maya`) plus that `SocialLink`. `Bid.identityInput` stores the raw URL.
+- Different URLs are different listings. One Dodo payer (`User`) may pay for many Persons. `Person.userId` is optional bookkeeping on each listing, not a 1:1 owner. Paying for LinkedIn does not merge into GitHub.
 - Public leaderboards hide `currentBid = 0`.
 - Public profile paths stay `/p/[username]`. Seed rows may keep older usernames; new checkouts require a profile URL.
 

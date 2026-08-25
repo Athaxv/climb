@@ -23,6 +23,9 @@
   --ring: #3b6ff0;
   --live: #009f31;
   --radius: 0.875rem;
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
@@ -86,7 +89,22 @@ html {
 }
 
 .climb-list-enter {
-  animation: climb-list-fade 200ms ease-out;
+  animation: climb-list-fade var(--motion-base) var(--ease-out);
+}
+
+@keyframes climb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.climb-enter {
+  animation: climb-enter var(--motion-base) var(--ease-out) both;
 }
 
 @keyframes live-pulse {
@@ -105,13 +123,40 @@ html {
   animation: live-pulse 2s ease-out infinite;
 }
 
+@keyframes climb-cta-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(59 111 240 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgb(59 111 240 / 0);
+  }
+}
+
+.climb-cta-ready {
+  animation: climb-cta-glow 2s var(--ease-out) infinite;
+}
+
+@keyframes climb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.climb-spin {
+  animation: climb-spin 700ms linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 
   .climb-list-enter,
-  .live-pulse-ring {
+  .climb-enter,
+  .climb-cta-ready,
+  .live-pulse-ring,
+  .climb-spin {
     animation: none;
   }
 

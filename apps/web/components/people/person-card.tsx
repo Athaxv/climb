@@ -4,7 +4,6 @@ import type { LeaderboardPerson } from "@climb/db";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
 import { BadgeCheck, MousePointerClick } from "lucide-react";
 import { motion } from "motion/react";
-import Link from "next/link";
 import { ClaimRankButton } from "@/components/people/claim-rank-button";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { enterDelaySeconds, useClimbMotion } from "@/lib/climb-motion";
@@ -107,8 +106,8 @@ export function PersonCard({
         />
       ) : null}
       <div className="flex items-center gap-2.5 sm:gap-3">
-        <Link
-          href={`/p/${person.username}`}
+        <a
+          href={`/go/${person.username}`}
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3"
         >
           {isFirst || isPodium ? (
@@ -171,7 +170,7 @@ export function PersonCard({
               ) : null}
             </span>
           </span>
-        </Link>
+        </a>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
           <p
             className={cn(

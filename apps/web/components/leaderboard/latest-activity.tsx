@@ -1,5 +1,4 @@
 import { formatUsdFromCents } from "@climb/ranking";
-import Link from "next/link";
 import { formatTimeAgo } from "@/lib/utils";
 import { PersonAvatar } from "@/components/people/person-avatar";
 
@@ -22,8 +21,8 @@ export function LatestActivity({ items }: { items: Activity[] }) {
       <ul className="mt-2 divide-y divide-border border-y border-border">
         {items.map((item) => (
           <li key={item.id}>
-            <Link
-              href={`/p/${item.username}`}
+            <a
+              href={`/go/${item.username}`}
               className="flex items-center gap-3 py-2.5 transition-colors duration-150 hover:bg-muted/60"
             >
               <PersonAvatar
@@ -44,7 +43,7 @@ export function LatestActivity({ items }: { items: Activity[] }) {
               <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                 {formatTimeAgo(item.createdAt)}
               </span>
-            </Link>
+            </a>
           </li>
         ))}
       </ul>

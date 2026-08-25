@@ -36,7 +36,7 @@ async function ClimbHero() {
 
 export default function ClimbLayout({ children }: LayoutProps<"/climb">) {
   return (
-    <main id="main" className="pt-8 pb-10 sm:pt-10">
+    <main id="main" className="pt-8 pb-20 sm:pt-10 sm:pb-28">
       <Suspense fallback={<ClimbHeroFallback />}>
         <ClimbHero />
       </Suspense>

@@ -5,7 +5,7 @@ const AVATAR_URL = "https://avatars.githubusercontent.com/athaxv?v=4&s=96";
 
 export function SiteFooter() {
   return (
-    <footer className="relative isolate mt-8 w-full overflow-hidden bg-background">
+    <footer className="relative isolate mt-16 w-full overflow-hidden bg-background sm:mt-24">
       <Image
         src="/bg.png"
         alt=""

@@ -63,7 +63,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const paidRank = query.paid === "1" ? person.rank : null;
 
   return (
-    <main id="main" className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+    <main id="main" className="climb-enter mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
       {paidRank != null ? <PaidRankBanner rank={paidRank} /> : null}
       <p className="text-sm font-medium text-primary">{person.rank > 0 ? `#${person.rank}` : "Unlisted"}</p>
       <div className="mt-4 flex items-start gap-4">
@@ -89,7 +89,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <dd className="mt-1 text-2xl font-bold text-primary">{formatUsdFromCents(person.currentBid)}</dd>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-card p-4">
-          <dt className="text-sm text-muted-foreground">Profile views</dt>
+          <dt className="text-sm text-muted-foreground">Clicks</dt>
           <dd className="mt-1 text-2xl font-bold tabular-nums">{person.totalViews.toLocaleString()}</dd>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-card p-4">

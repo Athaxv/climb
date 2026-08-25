@@ -52,13 +52,13 @@ export function LeaderboardList({
       {top.length > 0 ? (
         <div className="flex flex-col gap-3">
           {top.map((person, index) => (
-            <PersonCard key={person.id} person={person} priority={index < 3} />
+            <PersonCard key={person.id} person={person} priority={index < 3} enterIndex={index} />
           ))}
         </div>
       ) : null}
       {rest.length > 0 ? (
         <div className="flex flex-col gap-0.5">
-          {rest.map((person) => (
+          {rest.map((person, index) => (
             <div key={person.id}>
               {!searching && person.rank === 11 ? (
                 <p className="mt-2 mb-1 text-xs font-medium text-muted-foreground">Top 10</p>
@@ -66,7 +66,11 @@ export function LeaderboardList({
               {!searching && person.rank === 21 ? (
                 <p className="mt-2 mb-1 text-xs font-medium text-muted-foreground">Top 20</p>
               ) : null}
-              <PersonCard person={person} emphasizeRank={!searching} />
+              <PersonCard
+                person={person}
+                emphasizeRank={!searching}
+                enterIndex={top.length + index}
+              />
             </div>
           ))}
         </div>

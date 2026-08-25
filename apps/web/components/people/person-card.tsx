@@ -1,6 +1,6 @@
 import type { LeaderboardPerson } from "@climb/db";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, MousePointerClick } from "lucide-react";
 import Link from "next/link";
 import { ClaimRankButton } from "@/components/people/claim-rank-button";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -13,6 +13,7 @@ type PersonCardProps = {
   showClaim?: boolean;
   emphasizeRank?: boolean;
   priority?: boolean;
+  enterIndex?: number;
 };
 
 const PLATFORM_ORDER = ["LINKEDIN", "GITHUB", "TWITTER", "WEBSITE", "PORTFOLIO"] as const;
@@ -61,6 +62,7 @@ export function PersonCard({
   showClaim = true,
   emphasizeRank = true,
   priority = false,
+  enterIndex,
 }: PersonCardProps) {
   const minToTakeCents = calculateMinimumBidCents(person.currentBid);
   const minToTakeDollars = minToTakeCents / 100;
@@ -71,17 +73,26 @@ export function PersonCard({
   const platforms = PLATFORM_ORDER.filter((type) =>
     person.socialLinks.some((link) => link.type === type),
   );
+  const clicks = person.totalViews ?? 0;
+  const clickLabel = `${clicks.toLocaleString()} profile ${clicks === 1 ? "click" : "clicks"}`;
 
   return (
     <article
       id={`person-${person.username}`}
       className={cn(
-        "group relative overflow-visible transition-[border-color,background-color,box-shadow] duration-150",
+        "climb-enter group relative overflow-visible transition-[border-color,background-color,box-shadow,transform] duration-200 ease-(--ease-out)",
+        "hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
         isFirst &&
-          "rounded-[var(--radius)] border-2 border-primary bg-primary/[0.06] px-3 py-3 shadow-[0_8px_28px_-10px] shadow-primary/40",
-        isPodium && "rounded-[var(--radius)] border border-primary bg-card px-3 py-2.5",
-        !isFirst && !isPodium && "rounded-md px-2 py-2 hover:bg-muted/50 focus-within:bg-muted/50",
+          "rounded-[var(--radius)] border-2 border-primary bg-primary/[0.06] px-3 py-3 shadow-[0_8px_28px_-10px] shadow-primary/40 hover:shadow-[0_12px_32px_-8px] hover:shadow-primary/50",
+        isPodium &&
+          "rounded-[var(--radius)] border border-primary bg-card px-3 py-2.5 hover:shadow-md",
+        !isFirst && !isPodium && "rounded-md px-2 py-2 hover:bg-muted/50 hover:shadow-sm focus-within:bg-muted/50",
       )}
+      style={
+        enterIndex != null
+          ? { animationDelay: `${enterIndex < 12 ? enterIndex * 40 : 0}ms` }
+          : undefined
+      }
     >
       {showClaim ? (
         <ClaimRankButton
@@ -151,14 +162,23 @@ export function PersonCard({
             </span>
           </span>
         </Link>
-        <p
-          className={cn(
-            "shrink-0 font-semibold tabular-nums text-primary",
-            isFirst ? "text-base sm:text-lg" : "text-sm sm:text-base",
-          )}
-        >
-          {formatUsdFromCents(person.currentBid)}
-        </p>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <p
+            className={cn(
+              "font-semibold tabular-nums text-primary",
+              isFirst ? "text-base sm:text-lg" : "text-sm sm:text-base",
+            )}
+          >
+            {formatUsdFromCents(person.currentBid)}
+          </p>
+          <p
+            className="inline-flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground"
+            aria-label={clickLabel}
+          >
+            <MousePointerClick className="size-3" aria-hidden />
+            {clicks.toLocaleString()}
+          </p>
+        </div>
       </div>
     </article>
   );

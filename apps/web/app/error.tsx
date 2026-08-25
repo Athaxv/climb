@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { ClimbLogo } from "@/components/brand/climb-logo";
 
 export default function AppError({
   error,
@@ -16,6 +17,7 @@ export default function AppError({
 
   return (
     <main id="main" className="mx-auto flex min-h-[50vh] w-full max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
+      <ClimbLogo variant="mark" className="mb-4 size-8" />
       <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
       <p className="mt-3 text-[17px] leading-7 text-muted-foreground">
         The page failed to load. Try again, or go back to the board.

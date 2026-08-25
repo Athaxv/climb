@@ -121,9 +121,9 @@ function CategoryChipRow({
                 scroll={false}
                 prefetch
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-colors duration-150 ${
+                className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-[color,background-color,box-shadow] duration-150 ${
                   active
-                    ? "bg-primary font-medium text-primary-foreground"
+                    ? "bg-primary font-medium text-primary-foreground shadow-[0_4px_14px_-4px] shadow-primary/50"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >

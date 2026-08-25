@@ -61,6 +61,7 @@ describe("DodoPaymentProvider", () => {
         street: "123 Market St",
         zipcode: "94102",
       },
+      minimal_address: true,
       feature_flags: { allow_currency_selection: false, redirect_immediately: true },
       metadata: {
         bidId: "bid_1",
@@ -94,6 +95,40 @@ describe("DodoPaymentProvider", () => {
       }),
     );
     expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("customer");
+  });
+
+  it("lets live checkout collect country and local currency", async () => {
+    const previous = process.env.DODO_PAYMENTS_ENVIRONMENT;
+    process.env.DODO_PAYMENTS_ENVIRONMENT = "live_mode";
+    const client = mockClient();
+    client.checkoutSessions.create.mockResolvedValue({
+      session_id: "cks_live",
+      checkout_url: "https://checkout.dodopayments.com/session/cks_live",
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+
+    try {
+      await provider.createCheckout({
+        amountCents: 100,
+        currency: "usd",
+        customerName: "Priya",
+        returnUrl: "https://climb.app/api/checkout/complete?username=priya",
+        metadata: { bidId: "bid_live" },
+      });
+    } finally {
+      if (previous == null) delete process.env.DODO_PAYMENTS_ENVIRONMENT;
+      else process.env.DODO_PAYMENTS_ENVIRONMENT = previous;
+    }
+
+    expect(client.checkoutSessions.create).toHaveBeenCalledWith({
+      product_cart: [{ product_id: "pdt_bid", quantity: 1 }],
+      return_url: "https://climb.app/api/checkout/complete?username=priya",
+      minimal_address: true,
+      feature_flags: { allow_currency_selection: true, redirect_immediately: true },
+      metadata: { bidId: "bid_live", chargeAmountCents: "100" },
+    });
+    expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("billing_address");
+    expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("billing_currency");
   });
 
   it("wraps Dodo API failures", async () => {

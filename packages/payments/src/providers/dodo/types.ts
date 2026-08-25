@@ -13,6 +13,7 @@ export type DodoCheckoutSessionCreateBody = {
     street: string;
     zipcode: string;
   };
+  minimal_address?: boolean;
   feature_flags?: { allow_currency_selection?: boolean; redirect_immediately?: boolean };
 };
 

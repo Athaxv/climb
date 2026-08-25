@@ -107,3 +107,4 @@ Rank should move after the webhook, or when the return URL confirms the paid Che
 3. Set `DODO_PAYMENTS_ENVIRONMENT=live_mode`.
 4. Point the live webhook at `https://<production>/api/dodo/webhook` and use the live signing secret.
 5. Confirm `DODO_PAYMENTS_RETURN_URL` uses your production origin.
+6. In Dodo **Settings → Business**, turn on **Adaptive Currency**. Live checkout then omits the fake US address, asks only country (and PIN/ZIP where tax needs it), and lets the payer pick a local currency. Rank still quotes USD; webhooks match `metadata.chargeAmountCents`, not the converted total.

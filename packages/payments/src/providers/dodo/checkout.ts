@@ -32,6 +32,7 @@ export async function createDodoCheckout(
 
   try {
     const email = input.customerEmail?.trim();
+    const live = resolveDodoEnvironment() === "live_mode";
     const session = await client.checkoutSessions.create({
       product_cart: [{ product_id: productId, quantity }],
       ...(email
@@ -43,15 +44,18 @@ export async function createDodoCheckout(
           }
         : {}),
       return_url: input.returnUrl,
-      billing_currency: "USD",
-      feature_flags: { allow_currency_selection: false, redirect_immediately: true },
+      minimal_address: true,
+      feature_flags: { allow_currency_selection: live, redirect_immediately: true },
       metadata: {
         ...input.metadata,
         chargeAmountCents: String(input.amountCents),
       },
-      ...(resolveDodoEnvironment() === "test_mode"
-        ? { billing_address: { ...TEST_USD_BILLING } }
-        : {}),
+      ...(live
+        ? {}
+        : {
+            billing_currency: "USD",
+            billing_address: { ...TEST_USD_BILLING },
+          }),
     });
 
     const checkoutId = session.session_id ?? session.id;

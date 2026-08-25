@@ -1,9 +1,13 @@
+"use client";
+
 import type { LeaderboardPerson } from "@climb/db";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
 import { BadgeCheck, MousePointerClick } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
 import { ClaimRankButton } from "@/components/people/claim-rank-button";
 import { PersonAvatar } from "@/components/people/person-avatar";
+import { enterDelaySeconds, useClimbMotion } from "@/lib/climb-motion";
 import { cn } from "@/lib/utils";
 
 export { PersonAvatar } from "@/components/people/person-avatar";
@@ -75,24 +79,25 @@ export function PersonCard({
   );
   const clicks = person.totalViews ?? 0;
   const clickLabel = `${clicks.toLocaleString()} profile ${clicks === 1 ? "click" : "clicks"}`;
+  const { reduced, hoverLift, tap, spring } = useClimbMotion();
 
   return (
-    <article
+    <motion.article
       id={`person-${person.username}`}
+      initial={reduced ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ ...spring, delay: enterDelaySeconds(enterIndex) }}
+      whileHover={hoverLift}
+      whileTap={tap}
       className={cn(
-        "climb-enter group relative overflow-visible transition-[border-color,background-color,box-shadow,transform] duration-200 ease-(--ease-out)",
-        "hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
-        isFirst &&
-          "rounded-[var(--radius)] border-2 border-primary bg-primary/[0.06] px-3 py-3 shadow-[0_8px_28px_-10px] shadow-primary/40 hover:shadow-[0_12px_32px_-8px] hover:shadow-primary/50",
-        isPodium &&
-          "rounded-[var(--radius)] border border-primary bg-card px-3 py-2.5 hover:shadow-md",
-        !isFirst && !isPodium && "rounded-md px-2 py-2 hover:bg-muted/50 hover:shadow-sm focus-within:bg-muted/50",
+        "group relative overflow-visible rounded-[var(--radius)]",
+        isFirst && "px-3 py-3 ring-2 ring-primary",
+        isPodium && "px-3 py-2.5",
+        emphasizeRank && person.rank === 2 && "ring-1 ring-primary/55",
+        emphasizeRank && person.rank === 3 && "ring-1 ring-primary/30",
+        !isFirst && !isPodium && "px-2 py-2",
       )}
-      style={
-        enterIndex != null
-          ? { animationDelay: `${enterIndex < 12 ? enterIndex * 40 : 0}ms` }
-          : undefined
-      }
     >
       {showClaim ? (
         <ClaimRankButton
@@ -107,7 +112,12 @@ export function PersonCard({
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3"
         >
           {isFirst || isPodium ? (
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+            <span
+              className={cn(
+                "grid shrink-0 place-items-center rounded-full bg-primary font-bold text-primary-foreground",
+                isFirst ? "size-10 text-xs" : "size-8 text-[11px]",
+              )}
+            >
               #{person.rank}
             </span>
           ) : (
@@ -180,6 +190,6 @@ export function PersonCard({
           </p>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }

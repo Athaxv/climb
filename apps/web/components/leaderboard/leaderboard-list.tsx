@@ -25,7 +25,7 @@ export function LeaderboardList({
 
   if (people.length === 0 && page <= 1) {
     return (
-      <p className="px-4 py-16 text-center text-muted-foreground">
+      <p className="mx-4 px-4 py-16 text-center text-muted-foreground sm:mx-6">
         {searching ? "No matching people." : "No one on this board yet. Claim a spot."}
       </p>
     );
@@ -57,7 +57,7 @@ export function LeaderboardList({
         </div>
       ) : null}
       {rest.length > 0 ? (
-        <div className="flex flex-col gap-0.5">
+        <div className={`flex flex-col gap-2 ${top.length > 0 ? "mt-5" : ""}`}>
           {rest.map((person, index) => (
             <div key={person.id}>
               {!searching && person.rank === 11 ? (

@@ -14,7 +14,11 @@ export function InferConfirm({ status }: { status: "idle" | "loading" | "ready" 
   if (status !== "loading") return null;
 
   return (
-    <p className="text-left text-sm text-muted-foreground" aria-live="polite">
+    <p className="flex items-center gap-2 text-left text-sm text-muted-foreground" aria-live="polite">
+      <span
+        className="climb-spin size-3.5 shrink-0 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground"
+        aria-hidden
+      />
       Reading profile…
     </p>
   );

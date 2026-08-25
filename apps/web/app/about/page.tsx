@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main id="main" className="mx-auto w-full max-w-2xl px-4 pb-16 sm:px-6">
+    <main id="main" className="climb-enter mx-auto w-full max-w-2xl px-4 pb-16 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight">About Climb</h1>
       <div className="mt-6 space-y-4 text-[17px] leading-7 text-muted-foreground">
         <p className="text-foreground">Who deserves the top spot?</p>

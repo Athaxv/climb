@@ -152,7 +152,7 @@ function ClaimBar({
         highlighted && "ring-2 ring-ring",
       )}
     >
-      <p className="mx-auto inline-flex max-w-full flex-wrap items-center justify-center gap-x-1.5 rounded-full bg-muted/80 px-3 py-1 text-xs tabular-nums text-muted-foreground">
+      <p className="climb-enter mx-auto inline-flex max-w-full flex-wrap items-center justify-center gap-x-1.5 rounded-full bg-muted/80 px-3 py-1 text-xs tabular-nums text-muted-foreground">
         <span className="relative inline-flex size-1.5 shrink-0" aria-hidden>
           <span className="live-pulse-ring absolute inset-0 rounded-full bg-live" />
           <span className="relative size-1.5 rounded-full bg-live" />
@@ -169,10 +169,16 @@ function ClaimBar({
           {visitors.toLocaleString()} {visitors === 1 ? "visitor" : "visitors"} since launch
         </span>
       </p>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+      <h1
+        className="climb-enter mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+        style={{ animationDelay: "60ms" }}
+      >
         Climb the leaderboard
       </h1>
-      <p className="mt-3 text-sm tabular-nums text-muted-foreground">
+      <p
+        className="climb-enter mt-3 text-sm tabular-nums text-muted-foreground"
+        style={{ animationDelay: "100ms" }}
+      >
         {topBid ? (
           <>
             #1{topName ? ` ${topName}` : ""} is{" "}
@@ -193,7 +199,7 @@ function ClaimBar({
           {error}
         </p>
       ) : null}
-      <form onSubmit={onSubmit} className="mt-6">
+      <form onSubmit={onSubmit} className="climb-enter mt-6" style={{ animationDelay: "140ms" }}>
         <div className="flex items-center gap-2 sm:gap-3">
           <label className="sr-only" htmlFor="identity">
             LinkedIn, GitHub, X, or website URL
@@ -217,7 +223,10 @@ function ClaimBar({
             ref={submitRef}
             type="submit"
             disabled={!canSubmit || pending}
-            className="h-11 min-h-11 shrink-0 cursor-pointer rounded-[var(--radius)] bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6"
+            className={cn(
+              "h-11 min-h-11 shrink-0 cursor-pointer rounded-[var(--radius)] bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-40 sm:px-6",
+              canSubmit && !pending && "climb-cta-ready",
+            )}
           >
             {pending ? "Starting…" : "Climb"}
           </button>

@@ -10,7 +10,7 @@ export default function RulesPage() {
   const floor = centsToMoney(MIN_NEW_SPOT_CENTS);
 
   return (
-    <main id="main" className="mx-auto w-full max-w-2xl px-4 pb-16 sm:px-6">
+    <main id="main" className="climb-enter mx-auto w-full max-w-2xl px-4 pb-16 sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight">Rules</h1>
       <div className="mt-6 space-y-4 text-[17px] leading-7 text-muted-foreground">
         <p className="text-foreground">Rank is the bid. Nothing else.</p>

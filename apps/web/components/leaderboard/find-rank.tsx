@@ -44,7 +44,7 @@ function FindRankBar({
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+    <div className="climb-enter mx-auto w-full max-w-5xl px-4 sm:px-6">
       <form onSubmit={onSubmit} className="relative">
         <label className="sr-only" htmlFor="find-rank">
           Search people, usernames or skills

@@ -2,6 +2,7 @@ import type { LeaderboardPerson } from "@climb/db";
 import { BoardPagination } from "@/components/leaderboard/board-pagination";
 import { PersonCard } from "@/components/people/person-card";
 import { climbPath } from "@/lib/climb-url";
+import Link from "next/link";
 
 export function LeaderboardList({
   people,
@@ -43,9 +44,9 @@ export function LeaderboardList({
       {people.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">
           No one on this page.{" "}
-          <a href={hrefForPage(1)} className="font-medium text-primary hover:underline">
+          <Link href={hrefForPage(1)} className="font-medium text-primary hover:underline">
             Back to page 1
-          </a>
+          </Link>
         </p>
       ) : null}
       {top.length > 0 ? (

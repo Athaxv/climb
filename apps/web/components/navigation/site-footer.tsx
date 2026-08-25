@@ -12,11 +12,19 @@ export function SiteFooter() {
         aria-hidden
         fill
         sizes="100vw"
-        className="pointer-events-none object-cover object-bottom mix-blend-multiply dark:mix-blend-normal dark:opacity-90 dark:[mask-image:linear-gradient(to_bottom,transparent_0%,black_42%)]"
+        className="pointer-events-none object-cover object-bottom mix-blend-multiply dark:hidden"
+      />
+      <Image
+        src="/bg2.png"
+        alt=""
+        aria-hidden
+        fill
+        sizes="100vw"
+        className="pointer-events-none hidden object-cover object-bottom dark:block"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-background to-transparent dark:h-2/5"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-background to-transparent"
       />
       <div className="relative z-10 flex justify-center px-4 pt-8 pb-2 sm:px-6">
         <a

@@ -16,7 +16,7 @@ export default async function CreatePage({ searchParams }: Props) {
   const categories = CATEGORIES.map((category) => ({ slug: category.slug, name: category.name }));
 
   return (
-    <main id="main" className="mx-auto w-full max-w-xl px-4 pb-16 sm:px-6">
+    <main id="main" className="climb-enter mx-auto w-full max-w-xl px-4 pb-16 sm:px-6">
       <h1 className="text-center text-3xl font-bold tracking-tight">Claim your spot</h1>
       <p className="mt-4 text-center text-[17px] leading-7 text-muted-foreground">
         Pay to join or raise any listing with a LinkedIn, GitHub, X, or website URL. Rank only moves after

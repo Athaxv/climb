@@ -81,6 +81,29 @@ describe("planFulfillment", () => {
     ).toEqual({ action: "skip_bid" });
   });
 
+  it("applies a $1 new GitHub listing and does not list unpaid or failed checkouts", () => {
+    const joined = {
+      bidStatus: "PENDING" as const,
+      storedAmountCents: 100,
+      paidAmountCents: 100,
+      quotedChargeCents: 100,
+      decision: { ok: true as const, newBidCents: 100, kind: "joined" as const },
+    };
+    expect(planFulfillment({ eventType: "payment.succeeded", ...joined })).toEqual({
+      action: "apply",
+      kind: "joined",
+      newBidCents: 100,
+    });
+    expect(planFulfillment({ eventType: "payment.failed", ...joined })).toEqual({ action: "fail" });
+    expect(
+      planFulfillment({
+        eventType: "payment.succeeded",
+        ...joined,
+        bidStatus: "COMPLETED",
+      }),
+    ).toEqual({ action: "skip_bid" });
+  });
+
   it("ignores unrelated webhook types", () => {
     expect(planFulfillment({ ...pending, eventType: "ignored" })).toEqual({ action: "ignore" });
   });

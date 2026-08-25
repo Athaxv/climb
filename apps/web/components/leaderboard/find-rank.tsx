@@ -49,13 +49,13 @@ function FindRankBar({
         <label className="sr-only" htmlFor="find-rank">
           Search people, usernames or skills
         </label>
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           id="find-rank"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search people, usernames or skills..."
-          className="h-11 min-h-11 w-full rounded-[var(--radius)] border border-input bg-card pr-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-11 min-h-11 w-full rounded-full border border-border bg-background pr-4 pl-10 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
       </form>
     </div>

@@ -22,6 +22,16 @@ export type RetrievedCheckout = {
   metadata: Record<string, string>;
 };
 
+export type RetrievedPayment = {
+  paymentId: string;
+  paymentStatus: string;
+  checkoutId?: string;
+  customerEmail?: string;
+  customerName?: string;
+  amountCents?: number;
+  metadata: Record<string, string>;
+};
+
 export type VerifyWebhookInput = {
   rawBody: string;
   headers: {
@@ -49,6 +59,7 @@ export interface PaymentProvider {
   createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult>;
   verifyWebhook(input: VerifyWebhookInput): Promise<PaymentEvent>;
   getCheckout(checkoutId: string): Promise<RetrievedCheckout>;
+  getPayment(paymentId: string): Promise<RetrievedPayment>;
   refund(paymentId: string): Promise<void>;
 }
 

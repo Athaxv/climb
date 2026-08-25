@@ -5,12 +5,16 @@ import type { DodoSdkLike } from "./types";
 
 function mockClient(overrides: Partial<DodoSdkLike> = {}): DodoSdkLike & {
   checkoutSessions: DodoSdkLike["checkoutSessions"] & { create: ReturnType<typeof vi.fn>; retrieve: ReturnType<typeof vi.fn> };
+  payments: DodoSdkLike["payments"] & { retrieve: ReturnType<typeof vi.fn> };
   webhooks: { unwrap: ReturnType<typeof vi.fn> };
   refunds: { create: ReturnType<typeof vi.fn> };
 } {
   return {
     checkoutSessions: {
       create: vi.fn(),
+      retrieve: vi.fn(),
+    },
+    payments: {
       retrieve: vi.fn(),
     },
     webhooks: {
@@ -57,6 +61,7 @@ describe("DodoPaymentProvider", () => {
         street: "123 Market St",
         zipcode: "94102",
       },
+      minimal_address: true,
       feature_flags: { allow_currency_selection: false, redirect_immediately: true },
       metadata: {
         bidId: "bid_1",
@@ -90,6 +95,40 @@ describe("DodoPaymentProvider", () => {
       }),
     );
     expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("customer");
+  });
+
+  it("lets live checkout collect country and local currency", async () => {
+    const previous = process.env.DODO_PAYMENTS_ENVIRONMENT;
+    process.env.DODO_PAYMENTS_ENVIRONMENT = "live_mode";
+    const client = mockClient();
+    client.checkoutSessions.create.mockResolvedValue({
+      session_id: "cks_live",
+      checkout_url: "https://checkout.dodopayments.com/session/cks_live",
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+
+    try {
+      await provider.createCheckout({
+        amountCents: 100,
+        currency: "usd",
+        customerName: "Priya",
+        returnUrl: "https://climb.app/api/checkout/complete?username=priya",
+        metadata: { bidId: "bid_live" },
+      });
+    } finally {
+      if (previous == null) delete process.env.DODO_PAYMENTS_ENVIRONMENT;
+      else process.env.DODO_PAYMENTS_ENVIRONMENT = previous;
+    }
+
+    expect(client.checkoutSessions.create).toHaveBeenCalledWith({
+      product_cart: [{ product_id: "pdt_bid", quantity: 1 }],
+      return_url: "https://climb.app/api/checkout/complete?username=priya",
+      minimal_address: true,
+      feature_flags: { allow_currency_selection: true, redirect_immediately: true },
+      metadata: { bidId: "bid_live", chargeAmountCents: "100" },
+    });
+    expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("billing_address");
+    expect(client.checkoutSessions.create.mock.calls[0]?.[0]).not.toHaveProperty("billing_currency");
   });
 
   it("wraps Dodo API failures", async () => {
@@ -184,6 +223,28 @@ describe("DodoPaymentProvider", () => {
       paymentId: "pay_0Nm6RtD0syTrmvjLRVjcs",
       customerEmail: "payer@example.com",
       metadata: {},
+    });
+  });
+
+  it("retrieves a payment by pay_ id including checkout session and bid metadata", async () => {
+    const client = mockClient();
+    client.payments.retrieve.mockResolvedValue({
+      payment_id: "pay_abc",
+      status: "succeeded",
+      total_amount: 100,
+      checkout_session_id: "cks_1",
+      customer: { email: "payer@example.com" },
+      metadata: { bidId: "bid_1", personId: "p_1", chargeAmountCents: "100" },
+    });
+    const provider = createDodoPaymentProvider({ client, productId: "pdt_bid", configured: true });
+    await expect(provider.getPayment("pay_abc")).resolves.toEqual({
+      paymentId: "pay_abc",
+      paymentStatus: "succeeded",
+      checkoutId: "cks_1",
+      customerEmail: "payer@example.com",
+      customerName: undefined,
+      amountCents: 100,
+      metadata: { bidId: "bid_1", personId: "p_1", chargeAmountCents: "100" },
     });
   });
 });

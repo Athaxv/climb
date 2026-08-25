@@ -1,9 +1,7 @@
 import { trackEvent } from "@/lib/analytics";
-import { sessionFromRequest } from "@/lib/auth/session";
 import { getClientIp, jsonError } from "@/lib/http";
 import { rateLimit } from "@/lib/rate-limit";
 import { createProfileSchema } from "@/lib/validation/schemas";
-import { usableOwnerUserId } from "@/services/listing-merge-core";
 import { inferProfile } from "@/services/profile-infer";
 import { upsertProfile } from "@/services/profile.service";
 import { isCategorySlug } from "@climb/db";
@@ -38,7 +36,6 @@ export async function POST(request: Request) {
       bio = body.bio;
       location = body.location;
     }
-    const session = await sessionFromRequest(request);
     const { person, created } = await upsertProfile({
       identity: body.identity,
       category,
@@ -48,7 +45,6 @@ export async function POST(request: Request) {
       imageUrl,
       bio,
       location,
-      ownerUserId: usableOwnerUserId(session?.userId),
     });
     if (created) void trackEvent("profile_created", { username: person.username });
     return Response.json({

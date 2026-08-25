@@ -9,7 +9,7 @@
     "./skills": "./src/skills.ts"
   },
   "scripts": {
-    "generate": "prisma generate",
+    "generate": "prisma generate && node ./scripts/sync-engine-for-next.mjs",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",

@@ -1,9 +1,12 @@
+"use client";
+
 import type { LeaderboardPerson } from "@climb/db";
 import { calculateMinimumBidCents, formatUsdFromCents } from "@climb/ranking";
-import { BadgeCheck } from "lucide-react";
-import Link from "next/link";
+import { BadgeCheck, MousePointerClick } from "lucide-react";
+import { motion } from "motion/react";
 import { ClaimRankButton } from "@/components/people/claim-rank-button";
 import { PersonAvatar } from "@/components/people/person-avatar";
+import { enterDelaySeconds, useClimbMotion } from "@/lib/climb-motion";
 import { cn } from "@/lib/utils";
 
 export { PersonAvatar } from "@/components/people/person-avatar";
@@ -13,6 +16,7 @@ type PersonCardProps = {
   showClaim?: boolean;
   emphasizeRank?: boolean;
   priority?: boolean;
+  enterIndex?: number;
 };
 
 const PLATFORM_ORDER = ["LINKEDIN", "GITHUB", "TWITTER", "WEBSITE", "PORTFOLIO"] as const;
@@ -61,6 +65,7 @@ export function PersonCard({
   showClaim = true,
   emphasizeRank = true,
   priority = false,
+  enterIndex,
 }: PersonCardProps) {
   const minToTakeCents = calculateMinimumBidCents(person.currentBid);
   const minToTakeDollars = minToTakeCents / 100;
@@ -71,16 +76,26 @@ export function PersonCard({
   const platforms = PLATFORM_ORDER.filter((type) =>
     person.socialLinks.some((link) => link.type === type),
   );
+  const clicks = person.totalViews ?? 0;
+  const clickLabel = `${clicks.toLocaleString()} profile ${clicks === 1 ? "click" : "clicks"}`;
+  const { reduced, hoverLift, tap, spring } = useClimbMotion();
 
   return (
-    <article
+    <motion.article
       id={`person-${person.username}`}
+      initial={reduced ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ ...spring, delay: enterDelaySeconds(enterIndex) }}
+      whileHover={hoverLift}
+      whileTap={tap}
       className={cn(
-        "group relative overflow-visible transition-[border-color,background-color,box-shadow] duration-150",
-        isFirst &&
-          "rounded-[var(--radius)] border-2 border-primary bg-primary/[0.06] px-3 py-3 shadow-[0_8px_28px_-10px] shadow-primary/40",
-        isPodium && "rounded-[var(--radius)] border border-primary bg-card px-3 py-2.5",
-        !isFirst && !isPodium && "rounded-md px-2 py-2 hover:bg-muted/50 focus-within:bg-muted/50",
+        "group relative overflow-visible rounded-[var(--radius)]",
+        isFirst && "px-3 py-3 ring-2 ring-primary",
+        isPodium && "px-3 py-2.5",
+        emphasizeRank && person.rank === 2 && "ring-1 ring-primary/55",
+        emphasizeRank && person.rank === 3 && "ring-1 ring-primary/30",
+        !isFirst && !isPodium && "px-2 py-2",
       )}
     >
       {showClaim ? (
@@ -91,12 +106,17 @@ export function PersonCard({
         />
       ) : null}
       <div className="flex items-center gap-2.5 sm:gap-3">
-        <Link
-          href={`/p/${person.username}`}
+        <a
+          href={`/go/${person.username}`}
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3"
         >
           {isFirst || isPodium ? (
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+            <span
+              className={cn(
+                "grid shrink-0 place-items-center rounded-full bg-primary font-bold text-primary-foreground",
+                isFirst ? "size-10 text-xs" : "size-8 text-[11px]",
+              )}
+            >
               #{person.rank}
             </span>
           ) : (
@@ -150,16 +170,25 @@ export function PersonCard({
               ) : null}
             </span>
           </span>
-        </Link>
-        <p
-          className={cn(
-            "shrink-0 font-semibold tabular-nums text-primary",
-            isFirst ? "text-base sm:text-lg" : "text-sm sm:text-base",
-          )}
-        >
-          {formatUsdFromCents(person.currentBid)}
-        </p>
+        </a>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <p
+            className={cn(
+              "font-semibold tabular-nums text-primary",
+              isFirst ? "text-base sm:text-lg" : "text-sm sm:text-base",
+            )}
+          >
+            {formatUsdFromCents(person.currentBid)}
+          </p>
+          <p
+            className="inline-flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground"
+            aria-label={clickLabel}
+          >
+            <MousePointerClick className="size-3" aria-hidden />
+            {clicks.toLocaleString()}
+          </p>
+        </div>
       </div>
-    </article>
+    </motion.article>
   );
 }

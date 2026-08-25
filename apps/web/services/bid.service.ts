@@ -19,7 +19,6 @@ export async function createCheckout(input: {
   location?: string;
   targetBid?: number;
   origin?: string;
-  ownerUserId?: string;
 }) {
   let category = input.category?.trim() ?? "";
   let name = input.name?.trim();
@@ -48,7 +47,6 @@ export async function createCheckout(input: {
     imageUrl,
     bio,
     location,
-    ownerUserId: input.ownerUserId,
   });
 
   const requestedTargetCents = input.targetBid != null ? moneyToCents(input.targetBid) : undefined;

@@ -13,6 +13,7 @@ export type DodoCheckoutSessionCreateBody = {
     street: string;
     zipcode: string;
   };
+  minimal_address?: boolean;
   feature_flags?: { allow_currency_selection?: boolean; redirect_immediately?: boolean };
 };
 
@@ -34,10 +35,26 @@ export type DodoWebhookHeaders = {
   "webhook-timestamp": string;
 };
 
+export type DodoPaymentRecord = {
+  payment_id?: string;
+  id?: string;
+  status?: string | null;
+  total_amount?: number;
+  amount?: number;
+  checkout_session_id?: string | null;
+  checkout_id?: string | null;
+  customer_email?: string | null;
+  customer?: { email?: string; name?: string };
+  metadata?: Record<string, unknown>;
+};
+
 export type DodoSdkLike = {
   checkoutSessions: {
     create: (body: DodoCheckoutSessionCreateBody) => Promise<DodoCheckoutSession>;
     retrieve: (id: string) => Promise<DodoCheckoutSession>;
+  };
+  payments: {
+    retrieve: (id: string) => Promise<DodoPaymentRecord>;
   };
   webhooks: {
     unwrap: (body: string, opts: { headers: DodoWebhookHeaders }) => unknown;
